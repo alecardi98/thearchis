@@ -1,0 +1,19 @@
+# --- Target / Build Output Maven ---
+target/
+*.jar
+*.war
+*.ear
+
+# --- File e Cartelle di Configurazione Eclipse ---
+.settings/
+.project
+.classpath
+.factorypath
+.metadata/
+bin/
+
+# --- File Temporanei di Sistema / Log ---
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
