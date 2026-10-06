@@ -17,3 +17,6 @@ bin/
 Thumbs.db
 *.log
 *.tmp
+
+# --- File server ---
+server
