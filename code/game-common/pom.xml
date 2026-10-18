@@ -11,4 +11,9 @@
 
 	<artifactId>game-common</artifactId>
 	<name>Thearchis Common</name>
+
+	<dependencies>
+
+	</dependencies>
+
 </project>

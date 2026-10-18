@@ -13,10 +13,19 @@
 	<name>Thearchis Client</name>
 
 	<dependencies>
+
+		<!-- Dipendenza da game-common -->
 		<dependency>
 			<groupId>com.thearchis</groupId>
 			<artifactId>game-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
+		<!-- Dipendenza Log4j -->
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+		</dependency>
+
 	</dependencies>
 </project>

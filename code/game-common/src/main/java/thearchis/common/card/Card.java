@@ -1,4 +1,4 @@
-package thearchis.common.card.model;
+package thearchis.common.card;
 
 import thearchis.hero.HeroName;
 
