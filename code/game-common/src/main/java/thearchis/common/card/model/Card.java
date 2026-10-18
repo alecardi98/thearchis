@@ -6,7 +6,7 @@ public class Card {
 
 	private final int id;
 	private final String name;
-	private final int cost; // costo in mana
+	private final int costo; // costo in mana
 	private final CardType tipo;
 	private final Rarity rarità;
 	private final HeroName eroe; // classe di appartenenza
@@ -18,7 +18,7 @@ public class Card {
 		if (cost < 0 || cost > 10) {
 			throw new InvalidCardDataException(id, "cost");
 		} else {
-			this.cost = cost;
+			this.costo = cost;
 		}
 
 		if (tipo != CardType.Creatura && tipo != CardType.Magia) {
