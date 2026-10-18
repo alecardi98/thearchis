@@ -19,4 +19,4 @@ Thumbs.db
 *.tmp
 
 # --- File server ---
-server
+server_files
