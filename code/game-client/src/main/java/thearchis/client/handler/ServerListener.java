@@ -44,5 +44,4 @@ public class ServerListener implements Runnable {
 		client.serverDisconnection();
 	}
 
-
 }

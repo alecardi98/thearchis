@@ -20,3 +20,4 @@ Thumbs.db
 
 # --- File server ---
 server_files
+.env
