@@ -1,4 +1,4 @@
-package thearchis.hero;
+package thearchis.common.hero;
 
 public enum HeroName {
 	Brakkar, // la bestia

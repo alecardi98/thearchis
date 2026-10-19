@@ -1,4 +1,4 @@
-package thearchis.hero;
+package thearchis.common.hero;
 
 public class InvalidHeroDataException extends RuntimeException {
 	public InvalidHeroDataException(HeroName eroe, String message) {

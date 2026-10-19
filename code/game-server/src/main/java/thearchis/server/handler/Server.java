@@ -3,6 +3,11 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import thearchis.common.db.DBStatus;
+import thearchis.common.message.Message;
+import thearchis.common.message.MessageType;
+import thearchis.common.message.UserData;
+import thearchis.server.db.DBManager;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -16,8 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Server implements Runnable {
 
 	private static final Logger logger = LogManager.getLogger(Server.class);
-	private static Server server;
+	private static Server server; // (Singleton)
 	private final int port = 443;
+
+	private DBManager dbManager;
 
 	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>();
 	private final AtomicInteger idGenerator = new AtomicInteger(1);
@@ -31,6 +38,7 @@ public class Server implements Runnable {
 
 	@Override
 	public void run() {
+		dbConnection();
 		try {
 			serverSocket = new ServerSocket(port);
 			logger.info("Server in ascolto sulla porta {}", port);
@@ -59,23 +67,27 @@ public class Server implements Runnable {
 		}
 	}
 
+	private void dbConnection() {
+		dbManager = new DBManager();
+		dbManager.connect();
+	}
+
 	private void initializeClient(Socket socket) {
-		int clientId = idGenerator.getAndIncrement();
-		ClientHandler handler = new ClientHandler(socket, clientId);
+	    int clientId = idGenerator.getAndIncrement();
+	    ClientHandler handler = new ClientHandler(socket, clientId);
 
-		try {
-			handler.init();
-			activeClients.put(clientId, handler);
-			logger.info("Client #{} registrato con successo.", clientId);
+	    try {
+	        handler.init();
+	        activeClients.put(clientId, handler);
+	        logger.info("Client #{} registrato con successo.", clientId);
 
-			handler.run(); // Avvia il ciclo di ascolto messaggi di questo handler
+	        clientThreadPool.submit(handler);
 
-		} catch (IOException e) {
-			logger.error("Errore durante l'handshake con il client #{}: {}", clientId, e.getMessage());
-		} finally {
-			removeClient(clientId);
-			handler.cleanUp();
-		}
+	    } catch (IOException e) {
+	        logger.error("Errore durante l'handshake con il client #{}: {}", clientId, e.getMessage());
+	        removeClient(clientId);
+	        handler.cleanUp();
+	    }
 	}
 
 	public void removeClient(int clientId) {
@@ -84,7 +96,7 @@ public class Server implements Runnable {
 		}
 	}
 
-	public synchronized void stopServer() {
+	private synchronized void stopServer() {
 		if (!running)
 			return;
 		running = false;
@@ -103,7 +115,29 @@ public class Server implements Runnable {
 		}
 
 		clientThreadPool.shutdown();
+		dbManager.close();
 		logger.info("Server arrestato e risorse liberate.");
+	}
+
+	public void handleRegister(int clientId, Message msg) {
+		UserData userData = (UserData) msg.getData();
+		String nickname = userData.getNickname();
+		String password = userData.getPassword();
+
+		logger.info("Richiesta di registrazione ricevuta dal Client #{}, nickname: '{}'", clientId, nickname);
+
+		// Controllo nel database
+		DBStatus status = dbManager.registerUser(nickname, password);
+
+		ClientHandler clientHandler = activeClients.get(clientId);
+
+		if (clientHandler != null) {
+			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE,status);
+			clientHandler.sendMessage(responseMsg);
+			logger.info("Esito registrazione inviato al Client #{}: {}", clientId, status);
+		} else {
+			logger.warn("Client #{} non trovato tra i client attivi.", clientId);
+		}
 	}
 
 	/*

@@ -4,18 +4,21 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import thearchis.common.message.Message;
 
 public class ClientHandler implements Runnable {
 
 	private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
-	private final Socket socket; // socket dedicato al client
-	private final int clientId; // L'id numerico passato dal Server
+	private final Socket socket; // socket con il server
+	private final int clientId;
+	private boolean authenticated = false; // flag per garantire autenticazione al server
 
-	private ObjectOutputStream out; // per mandare messaggi
-	private ObjectInputStream in; // per ricevere messaggi
+	private ObjectOutputStream out;
+	private ObjectInputStream in;
 
 	public ClientHandler(Socket socket, int clientId) {
 		this.socket = socket;
@@ -23,23 +26,29 @@ public class ClientHandler implements Runnable {
 	}
 
 	public void init() throws IOException {
-		out = new ObjectOutputStream(socket.getOutputStream()); // apertura canale di uscita pacchetti
-		out.flush(); // pulizia canale
-		in = new ObjectInputStream(socket.getInputStream()); // apertura canale di entrata pacchetti
+		out = new ObjectOutputStream(socket.getOutputStream());
+		out.flush();
+		in = new ObjectInputStream(socket.getInputStream());
 	}
 
 	@Override
 	public void run() {
 		try {
 			Object obj;
-			// ciclo per ascoltare e gestire i messaggi
+			// gestione dei pacchetti in entrata delegata al server
 			while ((obj = in.readObject()) != null) {
-				// TODO: Cast a Message e logica di smistamento (ActionType / ControlType)
+				Message msg = (Message) obj;
+
+				switch (msg.getType()) {
+				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
+				default -> logger.error("ERRORE! Messaggio sconosciuto.");
+
+				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
 			logger.info("Connessione interrotta con il Client #" + clientId);
 		} finally {
-			cleanUp(); // Eseguito sempre, sia per disconnessione volontaria che per errore
+			cleanUp();
 		}
 	}
 
@@ -58,11 +67,19 @@ public class ClientHandler implements Runnable {
 	}
 
 	public synchronized void sendMessage(Object msg) {
+		if (out == null) {
+			logger.error("Impossibile inviare messaggio al Client #{}: ObjectOutputStream non inizializzato.",
+					clientId);
+			return;
+		}
+
 		try {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Errore invio messaggio al Client #" + clientId);
+			logger.error("Errore I/O durante l'invio del pacchetto '{}' al Client #{}: {}",
+					msg != null ? msg.getClass().getSimpleName() : "null", clientId, e.getMessage());
 		}
 	}
+
 }

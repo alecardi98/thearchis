@@ -1,4 +1,4 @@
-package thearchis.hero;
+package thearchis.common.hero;
 
 public class Hero {
 	private final HeroName name; // indica la classe di appartenenza

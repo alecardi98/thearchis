@@ -8,6 +8,10 @@ import java.net.Socket;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import thearchis.common.message.Message;
+import thearchis.common.message.MessageType;
+import thearchis.common.message.UserData;
+
 public class Client {
 	private static final Logger logger = LogManager.getLogger(Client.class);
 	private ObjectOutputStream out;
@@ -37,6 +41,7 @@ public class Client {
 			socket = new Socket(HOST, PORT);
 			logger.info("Client connesso al server");
 			out = new ObjectOutputStream(socket.getOutputStream());
+			out.flush();
 			in = new ObjectInputStream(socket.getInputStream());
 			serverListener = new ServerListener(in, this);
 			new Thread(serverListener).start();
@@ -59,16 +64,27 @@ public class Client {
 		logger.info("Disconnessione riuscita.");
 	}
 
-	/*
-	 * Metodo per inviare messaggi
-	 */
-	public void sendMessage(Object msg) {
+	public synchronized void sendMessage(Object msg) {
+		if (out == null) {
+			logger.error(
+					"Impossibile inviare il messaggio '{}': lo stream di output non è inizializzato (Client non connesso).",
+					msg != null ? msg.getClass().getSimpleName() : "null");
+			return;
+		}
+
 		try {
 			out.writeObject(msg);
 			out.flush();
+			logger.debug("Messaggio inviato con successo: {}", msg != null ? msg.getClass().getSimpleName() : "null");
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("Errore di I/O durante l'invio del messaggio di tipo '{}': {}",
+					msg != null ? msg.getClass().getSimpleName() : "null", e.getMessage());
 		}
+	}
+
+	public synchronized void sendRegister(String nickname, String password) {
+		Message msg = new Message(MessageType.REGISTER_REQUEST, new UserData(nickname, password));
+		sendMessage(msg);
 	}
 
 }
