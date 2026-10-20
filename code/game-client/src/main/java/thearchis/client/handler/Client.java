@@ -15,8 +15,10 @@ import thearchis.common.message.UserData;
 public class Client {
 	private static final Logger logger = LogManager.getLogger(Client.class);
 	private ObjectOutputStream out;
-	private ServerListener serverListener;
+	private ObjectInputStream in;
 	private Socket socket;
+	private ServerListener serverListener;
+	private boolean isDisconnecting = false;
 
 	private static final String HOST = "localhost";
 //	private static final String HOST = "204.216.208.188";
@@ -26,25 +28,26 @@ public class Client {
 	}
 
 	/*
-	 * Metodo per avviare il client
+	 * Avvia il client
 	 */
 	public void startClient() {
 		serverConnection();
 	}
 
 	/*
-	 * Metodo con il quale il client si connette al server
+	 * Il client si connette al server (inizializza in, out, socket e serverlistener)
 	 */
 	private void serverConnection() {
-		ObjectInputStream in;
 		try {
 			socket = new Socket(HOST, PORT);
 			logger.info("Client connesso al server");
+
 			out = new ObjectOutputStream(socket.getOutputStream());
 			out.flush();
 			in = new ObjectInputStream(socket.getInputStream());
+
 			serverListener = new ServerListener(in, this);
-			new Thread(serverListener).start();
+			new Thread(serverListener, "ServerListener-Thread").start();
 		} catch (IOException e) {
 			logger.error("ERRORE! Impossibile connettersi al server. Disconnessione.");
 			System.exit(1);
@@ -52,16 +55,30 @@ public class Client {
 	}
 
 	/*
-	 * Metodo con il quale il client si disconnette dal server
+	 * Il client si disconnette dal server (chiude in, out e socket)
 	 */
-	public void serverDisconnection() {
-		try {
-			out.close();
-			socket.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+	public synchronized void serverDisconnection() {
+		if (isDisconnecting) {
+			return; // Evita esecuzioni doppie o ricorsive
 		}
-		logger.info("Disconnessione riuscita.");
+		isDisconnecting = true;
+
+		if (serverListener != null) {
+			serverListener.stopListener();
+		}
+
+		try {
+			if (in != null)
+				in.close();
+			if (out != null)
+				out.close();
+			if (socket != null && !socket.isClosed())
+				socket.close();
+
+			logger.info("Disconnessione dal server completata con successo.");
+		} catch (IOException e) {
+			logger.error("Errore durante la chiusura delle risorse di rete: {}", e.getMessage());
+		}
 	}
 
 	public synchronized void sendMessage(Object msg) {
@@ -71,7 +88,6 @@ public class Client {
 					msg != null ? msg.getClass().getSimpleName() : "null");
 			return;
 		}
-
 		try {
 			out.writeObject(msg);
 			out.flush();
@@ -82,9 +98,11 @@ public class Client {
 		}
 	}
 
+	/*
+	 * Invio della richiesta di registrazione account
+	 */
 	public synchronized void sendRegister(String nickname, String password) {
 		Message msg = new Message(MessageType.REGISTER_REQUEST, new UserData(nickname, password));
 		sendMessage(msg);
 	}
-
 }

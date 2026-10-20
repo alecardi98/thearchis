@@ -7,7 +7,8 @@ public class ClientMain {
 		client.startClient();
 		
 		client.sendRegister("alecardi98", "12345");
-
+		Thread.sleep(3000);
+		client.serverDisconnection();
 	}
 
 }

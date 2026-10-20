@@ -23,15 +23,15 @@ public class Server implements Runnable {
 	private static final Logger logger = LogManager.getLogger(Server.class);
 	private static Server server; // (Singleton)
 	private final int port = 443;
+	private ServerSocket serverSocket;
+	private volatile boolean running = true;
 
 	private DBManager dbManager;
 
+	// mappa idclient,clienthandler
 	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>();
 	private final AtomicInteger idGenerator = new AtomicInteger(1);
 	private final ExecutorService clientThreadPool = Executors.newCachedThreadPool();
-
-	private ServerSocket serverSocket;
-	private volatile boolean running = true;
 
 	private Server() {
 	}
@@ -41,13 +41,14 @@ public class Server implements Runnable {
 		dbConnection();
 		try {
 			serverSocket = new ServerSocket(port);
-			logger.info("Server in ascolto sulla porta {}", port);
+			logger.info("Server in ascolto sulla porta {}: in attesa di connessioni...", port);
 
 			while (running) {
 				try {
 					Socket clientSocket = serverSocket.accept();
-					logger.info("Nuova connessione accettata da: {}", clientSocket.getInetAddress());
+					logger.info("Nuova connessione da {} accettata.", clientSocket.getInetAddress());
 
+					// libero il thread del server per gestire il client con un nuovo thread
 					clientThreadPool.submit(() -> initializeClient(clientSocket));
 
 				} catch (SocketException e) {
@@ -67,44 +68,49 @@ public class Server implements Runnable {
 		}
 	}
 
+	/*
+	 * Connessione al database
+	 */
 	private void dbConnection() {
 		dbManager = new DBManager();
 		dbManager.connect();
 	}
 
 	private void initializeClient(Socket socket) {
-	    int clientId = idGenerator.getAndIncrement();
-	    ClientHandler handler = new ClientHandler(socket, clientId);
+		int clientId = idGenerator.getAndIncrement(); // assegnazione id con AtomicInteger
+		ClientHandler handler = new ClientHandler(socket, clientId);
 
-	    try {
-	        handler.init();
-	        activeClients.put(clientId, handler);
-	        logger.info("Client #{} registrato con successo.", clientId);
+		try {
+			handler.init();
+			activeClients.put(clientId, handler); // mappo il nuovo clienthandler
+			logger.info("Client #{} registrato con successo.", clientId);
 
-	        clientThreadPool.submit(handler);
+			clientThreadPool.submit(handler); // nuovo thread per il clientHandler
 
-	    } catch (IOException e) {
-	        logger.error("Errore durante l'handshake con il client #{}: {}", clientId, e.getMessage());
-	        removeClient(clientId);
-	        handler.cleanUp();
-	    }
+		} catch (IOException e) {
+			logger.error("Errore durante l'handshake con il client #{}: {}", clientId, e.getMessage());
+			removeClient(clientId);
+			handler.cleanUp();
+		}
 	}
 
 	public void removeClient(int clientId) {
 		if (activeClients.remove(clientId) != null) {
 			logger.info("Client #{} rimosso dal server.", clientId);
 		}
+		// non fermo il thread perchè è gestito da ExecutorService
 	}
 
 	private synchronized void stopServer() {
 		if (!running)
 			return;
-		running = false;
 
+		running = false;
 		logger.info("Arresto del server in corso...");
 
-		activeClients.values().forEach(ClientHandler::cleanUp);
-		activeClients.clear();
+		// libero la mappa
+		activeClients.values().forEach(ClientHandler::cleanUp); // chiudo le connessioni dei client (in, out, socket)
+		activeClients.clear(); // svuoto la mappa
 
 		if (serverSocket != null && !serverSocket.isClosed()) {
 			try {
@@ -114,8 +120,9 @@ public class Server implements Runnable {
 			}
 		}
 
-		clientThreadPool.shutdown();
+		clientThreadPool.shutdown(); // chiuso la pool di thread
 		dbManager.close();
+
 		logger.info("Server arrestato e risorse liberate.");
 	}
 
@@ -132,7 +139,7 @@ public class Server implements Runnable {
 		ClientHandler clientHandler = activeClients.get(clientId);
 
 		if (clientHandler != null) {
-			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE,status);
+			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
 			clientHandler.sendMessage(responseMsg);
 			logger.info("Esito registrazione inviato al Client #{}: {}", clientId, status);
 		} else {

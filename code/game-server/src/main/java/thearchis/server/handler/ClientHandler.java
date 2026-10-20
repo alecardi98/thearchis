@@ -25,6 +25,9 @@ public class ClientHandler implements Runnable {
 		this.clientId = clientId;
 	}
 
+	/*
+	 * Creazione flusso in e out
+	 */
 	public void init() throws IOException {
 		out = new ObjectOutputStream(socket.getOutputStream());
 		out.flush();
@@ -42,7 +45,6 @@ public class ClientHandler implements Runnable {
 				switch (msg.getType()) {
 				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
 				default -> logger.error("ERRORE! Messaggio sconosciuto.");
-
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
@@ -61,9 +63,10 @@ public class ClientHandler implements Runnable {
 			if (socket != null && !socket.isClosed())
 				socket.close();
 		} catch (IOException e) {
-			logger.error("Errore durante la chiusura del socket del Client #" + clientId);
+			logger.debug("ERRORE! Socket del Client #{} già chiuso o non raggiungibile.", clientId);
+		} finally {
+			Server.getServer().removeClient(clientId);
 		}
-		Server.getServer().removeClient(clientId);
 	}
 
 	public synchronized void sendMessage(Object msg) {
@@ -72,7 +75,6 @@ public class ClientHandler implements Runnable {
 					clientId);
 			return;
 		}
-
 		try {
 			out.writeObject(msg);
 			out.flush();
