@@ -44,11 +44,11 @@ public class ClientHandler implements Runnable {
 
 				switch (msg.getType()) {
 				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
-				default -> logger.error("ERRORE! Messaggio sconosciuto.");
+				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			logger.info("Connessione interrotta con il Client #" + clientId);
+			logger.info("Client #{} : connessione interrotta con il client.", clientId);
 		} finally {
 			cleanUp();
 		}
@@ -63,7 +63,7 @@ public class ClientHandler implements Runnable {
 			if (socket != null && !socket.isClosed())
 				socket.close();
 		} catch (IOException e) {
-			logger.debug("ERRORE! Socket del Client #{} già chiuso o non raggiungibile.", clientId);
+			logger.debug("Client #{} : socket del client già chiuso o non raggiungibile.", clientId);
 		} finally {
 			Server.getServer().removeClient(clientId);
 		}
@@ -71,7 +71,7 @@ public class ClientHandler implements Runnable {
 
 	public synchronized void sendMessage(Object msg) {
 		if (out == null) {
-			logger.error("Impossibile inviare messaggio al Client #{}: ObjectOutputStream non inizializzato.",
+			logger.error("Client #{} : impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
 					clientId);
 			return;
 		}
@@ -79,7 +79,7 @@ public class ClientHandler implements Runnable {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Errore I/O durante l'invio del pacchetto '{}' al Client #{}: {}",
+			logger.error("Client #{} : errore I/O durante l'invio del pacchetto '{}' al client.",
 					msg != null ? msg.getClass().getSimpleName() : "null", clientId, e.getMessage());
 		}
 	}

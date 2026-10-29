@@ -49,7 +49,7 @@ public class Client {
 			serverListener = new ServerListener(in, this);
 			new Thread(serverListener, "ServerListener-Thread").start();
 		} catch (IOException e) {
-			logger.error("ERRORE! Impossibile connettersi al server. Disconnessione.");
+			logger.error("Impossibile connettersi al server. Disconnessione.");
 			System.exit(1);
 		}
 	}

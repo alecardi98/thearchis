@@ -83,12 +83,12 @@ public class Server implements Runnable {
 		try {
 			handler.init();
 			activeClients.put(clientId, handler); // mappo il nuovo clienthandler
-			logger.info("Client #{} registrato con successo.", clientId);
+			logger.info("Client #{} : collegato con successo.", clientId);
 
 			clientThreadPool.submit(handler); // nuovo thread per il clientHandler
 
 		} catch (IOException e) {
-			logger.error("Errore durante l'handshake con il client #{}: {}", clientId, e.getMessage());
+			logger.error("Client #{} : errore durante l'handshake ({})", clientId, e.getMessage());
 			removeClient(clientId);
 			handler.cleanUp();
 		}
@@ -96,7 +96,7 @@ public class Server implements Runnable {
 
 	public void removeClient(int clientId) {
 		if (activeClients.remove(clientId) != null) {
-			logger.info("Client #{} rimosso dal server.", clientId);
+			logger.info("Client #{} : rimosso dal server.", clientId);
 		}
 		// non fermo il thread perchè è gestito da ExecutorService
 	}
@@ -131,7 +131,7 @@ public class Server implements Runnable {
 		String nickname = userData.getNickname();
 		String password = userData.getPassword();
 
-		logger.info("Richiesta di registrazione ricevuta dal Client #{}, nickname: '{}'", clientId, nickname);
+		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
 
 		// Controllo nel database
 		DBStatus status = dbManager.registerUser(nickname, password);
@@ -141,9 +141,9 @@ public class Server implements Runnable {
 		if (clientHandler != null) {
 			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
 			clientHandler.sendMessage(responseMsg);
-			logger.info("Esito registrazione inviato al Client #{}: {}", clientId, status);
+			logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
 		} else {
-			logger.warn("Client #{} non trovato tra i client attivi.", clientId);
+			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
 		}
 	}
 

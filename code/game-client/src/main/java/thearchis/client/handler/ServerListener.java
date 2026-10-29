@@ -25,34 +25,25 @@ public class ServerListener implements Runnable {
 	public void run() {
 		try {
 			Object obj;
-			// Il ciclo gira finché il flag è true e lo stream restituisce oggetti validi
 			while (running && (obj = in.readObject()) != null) {
-				if (obj instanceof Message msg) {
-					switch (msg.getType()) {
-					case REGISTER_RESPONSE -> {
-						if (msg.getData() instanceof DBStatus status) {
-							handleRegisterResponse(status);
-						} else {
-							logger.warn("Payload non valido per REGISTER_RESPONSE.");
-						}
-					}
-					default -> logger.error("ERRORE! Tipo di messaggio sconosciuto: {}", msg.getType());
-					}
-				} else {
-					logger.warn("Ricevuto oggetto non riconosciuto dal Server: {}", obj.getClass().getName());
+				Message msg = (Message) obj;
+				switch (msg.getType()) {
+				case REGISTER_RESPONSE -> {
+					DBStatus status = (DBStatus) msg.getData();
+					handleRegisterResponse(status);
 				}
+				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
+				}
+
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			// Se running è false, la disconnessione è stata avviata volontariamente dal Client
-			if (!running) {
+			if (!running) { // disconnessione avviata volontariamente dal Client
 				logger.info("ServerListener arrestato correttamente.");
 			} else {
-				logger.error("ERRORE! Comunicazione con il Server persa in modo inatteso: {}", e.getMessage());
+				logger.error("Comunicazione con il Server persa in modo inatteso: {}", e.getMessage());
 			}
 		} finally {
-			// Se la disconnessione è stata causata dal Server (running è ancora true),
-			// notifichiamo al Client di liberare le risorse
-			if (running) {
+			if (running) { // disconnessione causata dal server
 				client.serverDisconnection();
 			}
 		}
