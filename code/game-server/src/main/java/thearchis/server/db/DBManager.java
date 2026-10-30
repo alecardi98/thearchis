@@ -6,6 +6,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 
@@ -99,26 +100,23 @@ public class DBManager {
 		}
 	}
 
-//	public DBStatus loginUser(String nickname, String password) {
-//		try {
-//			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
-//
-//			// Cerca il documento dell'utente tramite nickname
-//			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
-//
-//			// Se l'utente non esiste o la password non corrisponde -> Dati errati
-//			if (userDoc == null || !userDoc.getString("password").equals(password)) {
-//				logger.warn("Login fallito per il nickname '{}': credenziali errate.", nickname);
-//				return DBStatus.INVALID_CREDENTIALS;
-//			}
-//
-//			logger.info("Login eseguito con successo per '{}'.", nickname);
-//			return DBStatus.LOGIN_OK;
-//
-//		} catch (MongoException e) {
-//			logger.error("Errore MongoDB durante il login di '{}': {}", nickname, e.getMessage());
-//			return DBStatus.DB_ERROR;
-//		}
-//	}
+	public DBStatus loginUser(String nickname, String password) {
+		try {
+			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
+			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
+
+			if (userDoc == null || !password.equals(userDoc.getString("password"))) {
+				logger.warn("Login fallito per '{}' (credenziali errate).", nickname);
+				return DBStatus.INVALID_CREDENTIALS;
+			}
+
+			logger.info("Login eseguito con successo per '{}'.", nickname);
+			return DBStatus.LOGIN_OK;
+
+		} catch (MongoException e) {
+			logger.error("Errore MongoDB durante il login di '{}' ({}).", nickname, e.getMessage());
+			return DBStatus.DB_ERROR;
+		}
+	}
 
 }

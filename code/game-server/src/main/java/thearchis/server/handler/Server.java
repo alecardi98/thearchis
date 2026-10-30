@@ -28,10 +28,10 @@ public class Server implements Runnable {
 
 	private DBManager dbManager;
 
-	// mappa idclient,clienthandler
-	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>(); // idclient,clienthandler
 	private final AtomicInteger idGenerator = new AtomicInteger(1);
 	private final ExecutorService clientThreadPool = Executors.newCachedThreadPool();
+	private final ConcurrentMap<String, Integer> loggedUsers = new ConcurrentHashMap<>(); // nickname,idclient
 
 	private Server() {
 	}
@@ -78,27 +78,36 @@ public class Server implements Runnable {
 
 	private void initializeClient(Socket socket) {
 		int clientId = idGenerator.getAndIncrement(); // assegnazione id con AtomicInteger
-		ClientHandler handler = new ClientHandler(socket, clientId);
+		ClientHandler clientHandler = new ClientHandler(socket, clientId);
 
 		try {
-			handler.init();
-			activeClients.put(clientId, handler); // mappo il nuovo clienthandler
+			clientHandler.init();
+			activeClients.put(clientId, clientHandler); // mappo il nuovo clienthandler
 			logger.info("Client #{} : collegato con successo.", clientId);
 
-			clientThreadPool.submit(handler); // nuovo thread per il clientHandler
+			clientThreadPool.submit(clientHandler); // nuovo thread per il clientHandler
 
 		} catch (IOException e) {
 			logger.error("Client #{} : errore durante l'handshake ({})", clientId, e.getMessage());
 			removeClient(clientId);
-			handler.cleanUp();
+			clientHandler.cleanUp();
 		}
 	}
 
 	public void removeClient(int clientId) {
-		if (activeClients.remove(clientId) != null) {
-			logger.info("Client #{} : rimosso dal server.", clientId);
+		ClientHandler clientHandler = activeClients.remove(clientId);
+
+		if (clientHandler != null) {
+			logger.info("Client #{} : rimosso dai client attivi.", clientId);
+
+			String nickname = clientHandler.getNickname();
+			if (nickname != null) { // client autenticato
+				loggedUsers.remove(nickname);
+				logger.info("Client #{} : autenticazione utente '{}' rimossa.", nickname, clientId);
+			}
+		} else {
+			logger.warn("Client #{} : non trovato tra i client attivi al momento della rimozione.", clientId);
 		}
-		// non fermo il thread perchè è gestito da ExecutorService
 	}
 
 	private synchronized void stopServer() {
@@ -108,7 +117,6 @@ public class Server implements Runnable {
 		running = false;
 		logger.info("Arresto del server in corso...");
 
-		// libero la mappa
 		activeClients.values().forEach(ClientHandler::cleanUp); // chiudo le connessioni dei client (in, out, socket)
 		activeClients.clear(); // svuoto la mappa
 
@@ -133,15 +141,49 @@ public class Server implements Runnable {
 
 		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
 
-		// Controllo nel database
 		DBStatus status = dbManager.registerUser(nickname, password);
-
 		ClientHandler clientHandler = activeClients.get(clientId);
-
 		if (clientHandler != null) {
 			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
 			clientHandler.sendMessage(responseMsg);
 			logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
+		} else {
+			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
+		}
+	}
+
+	public void handleLogin(int clientId, Message msg) {
+		UserData userData = (UserData) msg.getData();
+		String nickname = userData.getNickname();
+		String password = userData.getPassword();
+
+		logger.info("Client #{} : ricevuta richiesta di login (nickname '{}')", clientId, nickname);
+		ClientHandler clientHandler = activeClients.get(clientId);
+
+		if (clientHandler != null) {
+
+			if (loggedUsers.containsValue(clientId)) { // socket già autenticato
+				logger.warn("Client #{} : tentativo di login rifiutato (socket già autenticato).", clientId);
+				clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
+				return;
+			}
+
+			if (loggedUsers.containsKey(nickname)) { // nickname già loggato altrove
+				logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
+				clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
+				return;
+			}
+
+			DBStatus status = dbManager.loginUser(nickname, password);
+
+			if (status == DBStatus.LOGIN_OK) {
+				clientHandler.setNickname(nickname);
+				loggedUsers.put(nickname, clientId);
+			}
+
+			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, status));
+			logger.info("Client #{} : esito login inviato (status '{}')", clientId, status);
+
 		} else {
 			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
 		}

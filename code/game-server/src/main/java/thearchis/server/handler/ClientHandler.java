@@ -13,12 +13,12 @@ public class ClientHandler implements Runnable {
 
 	private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
-	private final Socket socket; // socket con il server
-	private final int clientId;
-	private boolean authenticated = false; // flag per garantire autenticazione al server
-
+	private final Socket socket;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
+
+	private final int clientId;
+	private String nickname;
 
 	public ClientHandler(Socket socket, int clientId) {
 		this.socket = socket;
@@ -44,6 +44,7 @@ public class ClientHandler implements Runnable {
 
 				switch (msg.getType()) {
 				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
+				case LOGIN_REQUEST -> Server.getServer().handleLogin(clientId, msg);
 				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
 				}
 			}
@@ -82,6 +83,18 @@ public class ClientHandler implements Runnable {
 			logger.error("Client #{} : errore I/O durante l'invio del pacchetto '{}' al client.",
 					msg != null ? msg.getClass().getSimpleName() : "null", clientId, e.getMessage());
 		}
+	}
+
+	/*
+	 * Getter & Setter
+	 */
+
+	public void setNickname(String nickname) {
+		this.nickname = nickname;
+	}
+
+	public String getNickname() {
+		return nickname;
 	}
 
 }

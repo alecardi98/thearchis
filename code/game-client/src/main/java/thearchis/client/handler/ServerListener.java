@@ -32,6 +32,11 @@ public class ServerListener implements Runnable {
 					DBStatus status = (DBStatus) msg.getData();
 					handleRegisterResponse(status);
 				}
+				case LOGIN_RESPONSE -> {
+					DBStatus status = (DBStatus) msg.getData();
+					handleLoginResponse(status);
+				}
+
 				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
 				}
 
@@ -57,10 +62,38 @@ public class ServerListener implements Runnable {
 		logger.info("Esito registrazione: {}", status);
 
 		switch (status) {
-		case REGISTER_OK -> System.out.println("[GUI] Registrazione riuscita!");
-		case NICKNAME_ALREADY_EXISTS -> System.out.println("[GUI] Nickname già esistente!");
-		case DB_ERROR -> System.out.println("[GUI] Problema temporaneo al server.");
-		default -> System.out.println("[GUI] Risposta sconosciuta.");
+		case REGISTER_OK -> System.out.println("[GUI] Registrazione: registrazione riuscita.");
+		case NICKNAME_ALREADY_EXISTS -> System.out.println("[GUI] Registrazione: nickname già esistente.");
+		case DB_ERROR -> System.out.println("[GUI] Registrazione: errore del server/database.");
+		default -> System.out.println("[GUI] Registrazione: risposta sconosciuta.");
 		}
 	}
+
+	private void handleLoginResponse(DBStatus status) {
+		logger.info("Esito login: {}", status);
+
+		switch (status) {
+		case LOGIN_OK -> {
+			System.out.println("[GUI] Login: login riuscito.");
+			client.confirmLogin();
+		}
+		case INVALID_CREDENTIALS -> {
+			System.out.println("[GUI] Login: credenziali errate.");
+			client.clearPendingLogin();
+		}
+		case ALREADY_LOGGED_IN -> {
+			System.out.println("[GUI] Login: utente già loggato.");
+			client.clearPendingLogin();
+		}
+		case DB_ERROR -> {
+			System.out.println("[GUI] Login: errore del server/database.");
+			client.clearPendingLogin();
+		}
+		default -> {
+			System.out.println("[GUI] Login: risposta sconosciuta.");
+			client.clearPendingLogin();
+		}
+		}
+	}
+
 }

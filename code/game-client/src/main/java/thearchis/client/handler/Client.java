@@ -20,6 +20,9 @@ public class Client {
 	private ServerListener serverListener;
 	private boolean isDisconnecting = false;
 
+	private String pendingNickname;
+	private String nickname;
+
 	private static final String HOST = "localhost";
 //	private static final String HOST = "204.216.208.188";
 	private static final int PORT = 443;
@@ -35,7 +38,8 @@ public class Client {
 	}
 
 	/*
-	 * Il client si connette al server (inizializza in, out, socket e serverlistener)
+	 * Il client si connette al server (inizializza in, out, socket e
+	 * serverlistener)
 	 */
 	private void serverConnection() {
 		try {
@@ -82,12 +86,12 @@ public class Client {
 	}
 
 	public synchronized void sendMessage(Object msg) {
-		if (out == null) {
-			logger.error(
-					"Impossibile inviare il messaggio '{}': lo stream di output non è inizializzato (Client non connesso).",
+		if (out == null || socket == null || socket.isClosed() || !socket.isConnected()) {
+			logger.warn("Impossibile inviare il messaggio '{}': socket chiuso o non connesso.",
 					msg != null ? msg.getClass().getSimpleName() : "null");
 			return;
 		}
+
 		try {
 			out.writeObject(msg);
 			out.flush();
@@ -105,4 +109,38 @@ public class Client {
 		Message msg = new Message(MessageType.REGISTER_REQUEST, new UserData(nickname, password));
 		sendMessage(msg);
 	}
+
+	/*
+	 * Invio della richiesta di login account
+	 */
+	public synchronized void sendLogin(String nickname, String password) {
+		pendingNickname = nickname;
+		Message msg = new Message(MessageType.LOGIN_REQUEST, new UserData(nickname, password));
+		sendMessage(msg);
+	}
+
+	public synchronized void confirmLogin() {
+		if (pendingNickname != null) {
+			nickname = pendingNickname;
+			pendingNickname = null;
+			logger.info("Sessione salvata con successo per '{}'.", nickname);
+		}
+	}
+
+	public synchronized void clearPendingLogin() {
+		pendingNickname = null;
+	}
+
+	/*
+	 * Getter & Setter
+	 */
+
+	public String getPendingNickname() {
+		return pendingNickname;
+	}
+
+	public void setNickname(String nickname) {
+		this.nickname = nickname;
+	}
+
 }
