@@ -13,18 +13,21 @@ public class ClientHandler implements Runnable {
 
 	private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
-	private final Socket socket; // socket con il server
-	private final int clientId;
-	private boolean authenticated = false; // flag per garantire autenticazione al server
-
+	private final Socket socket;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
+
+	private final int clientId;
+	private String nickname;
 
 	public ClientHandler(Socket socket, int clientId) {
 		this.socket = socket;
 		this.clientId = clientId;
 	}
 
+	/*
+	 * Creazione flusso in e out
+	 */
 	public void init() throws IOException {
 		out = new ObjectOutputStream(socket.getOutputStream());
 		out.flush();
@@ -41,12 +44,12 @@ public class ClientHandler implements Runnable {
 
 				switch (msg.getType()) {
 				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
-				default -> logger.error("ERRORE! Messaggio sconosciuto.");
-
+				case LOGIN_REQUEST -> Server.getServer().handleLogin(clientId, msg);
+				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			logger.info("Connessione interrotta con il Client #" + clientId);
+			logger.info("Client #{} : connessione interrotta con il client.", clientId);
 		} finally {
 			cleanUp();
 		}
@@ -61,25 +64,37 @@ public class ClientHandler implements Runnable {
 			if (socket != null && !socket.isClosed())
 				socket.close();
 		} catch (IOException e) {
-			logger.error("Errore durante la chiusura del socket del Client #" + clientId);
+			logger.debug("Client #{} : socket del client già chiuso o non raggiungibile.", clientId);
+		} finally {
+			Server.getServer().removeClient(clientId);
 		}
-		Server.getServer().removeClient(clientId);
 	}
 
 	public synchronized void sendMessage(Object msg) {
 		if (out == null) {
-			logger.error("Impossibile inviare messaggio al Client #{}: ObjectOutputStream non inizializzato.",
+			logger.error("Client #{} : impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
 					clientId);
 			return;
 		}
-
 		try {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Errore I/O durante l'invio del pacchetto '{}' al Client #{}: {}",
+			logger.error("Client #{} : errore I/O durante l'invio del pacchetto '{}' al client.",
 					msg != null ? msg.getClass().getSimpleName() : "null", clientId, e.getMessage());
 		}
+	}
+
+	/*
+	 * Getter & Setter
+	 */
+
+	public void setNickname(String nickname) {
+		this.nickname = nickname;
+	}
+
+	public String getNickname() {
+		return nickname;
 	}
 
 }
