@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,7 +19,7 @@ public class Client {
 	private ObjectInputStream in;
 	private Socket socket;
 	private ServerListener serverListener;
-	private boolean isDisconnecting = false;
+	private final AtomicBoolean isDisconnecting = new AtomicBoolean(false);
 
 	private String pendingNickname;
 	private String nickname;
@@ -30,17 +31,10 @@ public class Client {
 	public Client() {
 	}
 
-	/*
-	 * Avvia il client
-	 */
 	public void startClient() {
 		serverConnection();
 	}
 
-	/*
-	 * Il client si connette al server (inizializza in, out, socket e
-	 * serverlistener)
-	 */
 	private void serverConnection() {
 		try {
 			socket = new Socket(HOST, PORT);
@@ -53,19 +47,23 @@ public class Client {
 			serverListener = new ServerListener(in, this);
 			new Thread(serverListener, "ServerListener-Thread").start();
 		} catch (IOException e) {
-			logger.error("Impossibile connettersi al server. Disconnessione.");
+			logger.error("Impossibile connettersi al server, chiusura risorse ({}).", e.getMessage());
+			// Chiusura di sicurezza se il socket si era aperto ma gli stream sono falliti
+			if (socket != null && !socket.isClosed()) {
+				try {
+					socket.close();
+				} catch (IOException ex) {
+					logger.debug("Errore durante la chiusura del socket post-fallimento: {}", ex.getMessage());
+				}
+			}
 			System.exit(1);
 		}
 	}
 
-	/*
-	 * Il client si disconnette dal server (chiude in, out e socket)
-	 */
-	public synchronized void serverDisconnection() {
-		if (isDisconnecting) {
-			return; // Evita esecuzioni doppie o ricorsive
+	public void serverDisconnection() {
+		if (!isDisconnecting.compareAndSet(false, true)) {
+			return;
 		}
-		isDisconnecting = true;
 
 		if (serverListener != null) {
 			serverListener.stopListener();
@@ -102,17 +100,11 @@ public class Client {
 		}
 	}
 
-	/*
-	 * Invio della richiesta di registrazione account
-	 */
 	public synchronized void sendRegister(String nickname, String password) {
 		Message msg = new Message(MessageType.REGISTER_REQUEST, new UserData(nickname, password));
 		sendMessage(msg);
 	}
 
-	/*
-	 * Invio della richiesta di login account
-	 */
 	public synchronized void sendLogin(String nickname, String password) {
 		pendingNickname = nickname;
 		Message msg = new Message(MessageType.LOGIN_REQUEST, new UserData(nickname, password));
@@ -142,5 +134,4 @@ public class Client {
 	public void setNickname(String nickname) {
 		this.nickname = nickname;
 	}
-
 }

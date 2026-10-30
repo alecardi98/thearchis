@@ -26,29 +26,22 @@ public class ServerListener implements Runnable {
 		try {
 			Object obj;
 			while (running && (obj = in.readObject()) != null) {
-				Message msg = (Message) obj;
-				switch (msg.getType()) {
-				case REGISTER_RESPONSE -> {
-					DBStatus status = (DBStatus) msg.getData();
-					handleRegisterResponse(status);
-				}
-				case LOGIN_RESPONSE -> {
-					DBStatus status = (DBStatus) msg.getData();
-					handleLoginResponse(status);
-				}
 
-				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
+				if (obj instanceof Message msg) {
+					processMessage(msg);
+				} else {
+					logger.warn("Oggetto ricevuto non riconosciuto: {}", obj.getClass().getName());
 				}
-
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			if (!running) { // disconnessione avviata volontariamente dal Client
+
+			if (!running) { // Disconnessione avviata volontariamente dal Client
 				logger.info("ServerListener arrestato correttamente.");
 			} else {
-				logger.error("Comunicazione con il Server persa in modo inatteso: {}", e.getMessage());
+				logger.error("Comunicazione con il Server persa in modo inatteso ({}).", e.getMessage());
 			}
 		} finally {
-			if (running) { // disconnessione causata dal server
+			if (running) {
 				client.serverDisconnection();
 			}
 		}
@@ -56,6 +49,20 @@ public class ServerListener implements Runnable {
 
 	public void stopListener() {
 		this.running = false;
+	}
+
+	private void processMessage(Message msg) {
+		switch (msg.getType()) {
+		case REGISTER_RESPONSE -> {
+			DBStatus status = (DBStatus) msg.getData();
+			handleRegisterResponse(status);
+		}
+		case LOGIN_RESPONSE -> {
+			DBStatus status = (DBStatus) msg.getData();
+			handleLoginResponse(status);
+		}
+		default -> logger.error("Tipo di messaggio non gestito: {}", msg.getType());
+		}
 	}
 
 	private void handleRegisterResponse(DBStatus status) {
@@ -95,5 +102,4 @@ public class ServerListener implements Runnable {
 		}
 		}
 	}
-
 }
