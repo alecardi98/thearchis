@@ -46,9 +46,7 @@ public class DBManager {
 			}
 
 			try {
-				// creazione di un MongoClient per gestire la connessione con il database
 				mongoClient = MongoClients.create(CONNECTION_URI);
-				// creazione di un MongoDatabase per gestire il database
 				database = mongoClient.getDatabase(DB_NAME);
 
 				// ping per verificare la connessione

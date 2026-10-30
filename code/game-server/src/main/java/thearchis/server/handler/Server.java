@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import thearchis.common.db.DBStatus;
+import thearchis.common.game.ClientState;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.UserData;
@@ -117,8 +118,8 @@ public class Server implements Runnable {
 		running = false;
 		logger.info("Arresto del server in corso...");
 
-		activeClients.values().forEach(ClientHandler::cleanUp); // chiudo le connessioni dei client (in, out, socket)
-		activeClients.clear(); // svuoto la mappa
+		activeClients.values().forEach(ClientHandler::cleanUp);
+		activeClients.clear();
 
 		if (serverSocket != null && !serverSocket.isClosed()) {
 			try {
@@ -128,7 +129,7 @@ public class Server implements Runnable {
 			}
 		}
 
-		clientThreadPool.shutdown(); // chiuso la pool di thread
+		clientThreadPool.shutdown();
 		dbManager.close();
 
 		logger.info("Server arrestato e risorse liberate.");
@@ -141,15 +142,24 @@ public class Server implements Runnable {
 
 		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
 
-		DBStatus status = dbManager.registerUser(nickname, password);
 		ClientHandler clientHandler = activeClients.get(clientId);
-		if (clientHandler != null) {
-			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
-			clientHandler.sendMessage(responseMsg);
-			logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
-		} else {
+		if (clientHandler == null) {
 			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
+			return;
 		}
+
+		if (clientHandler.getClientState() != ClientState.NOT_AUTHENTICATED) {
+			logger.warn("Client #{} : tentativo di registrazione rifiutato (stato non valido: {}).", clientId,
+					clientHandler.getClientState());
+			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, DBStatus.BAD_REQUEST));
+			return;
+		}
+
+		DBStatus status = dbManager.registerUser(nickname, password);
+		Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
+		clientHandler.sendMessage(responseMsg);
+
+		logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
 	}
 
 	public void handleLogin(int clientId, Message msg) {
@@ -158,35 +168,36 @@ public class Server implements Runnable {
 		String password = userData.getPassword();
 
 		logger.info("Client #{} : ricevuta richiesta di login (nickname '{}')", clientId, nickname);
+
 		ClientHandler clientHandler = activeClients.get(clientId);
-
-		if (clientHandler != null) {
-
-			if (loggedUsers.containsValue(clientId)) { // socket già autenticato
-				logger.warn("Client #{} : tentativo di login rifiutato (socket già autenticato).", clientId);
-				clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
-				return;
-			}
-
-			if (loggedUsers.containsKey(nickname)) { // nickname già loggato altrove
-				logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
-				clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
-				return;
-			}
-
-			DBStatus status = dbManager.loginUser(nickname, password);
-
-			if (status == DBStatus.LOGIN_OK) {
-				clientHandler.setNickname(nickname);
-				loggedUsers.put(nickname, clientId);
-			}
-
-			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, status));
-			logger.info("Client #{} : esito login inviato (status '{}')", clientId, status);
-
-		} else {
+		if (clientHandler == null) {
 			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
+			return;
 		}
+
+		if (clientHandler.getClientState() != ClientState.NOT_AUTHENTICATED) {
+			logger.warn("Client #{} : tentativo di login rifiutato (stato non valido: {}).", clientId,
+					clientHandler.getClientState());
+			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.BAD_REQUEST));
+			return;
+		}
+
+		if (loggedUsers.containsKey(nickname)) { // nickname già loggato altrove
+			logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
+			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
+			return;
+		}
+
+		DBStatus status = dbManager.loginUser(nickname, password);
+
+		if (status == DBStatus.LOGIN_OK) {
+			clientHandler.setNickname(nickname);
+			clientHandler.setClientState(ClientState.MAIN_MENU);
+			loggedUsers.put(nickname, clientId);
+		}
+
+		clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, status));
+		logger.info("Client #{} : esito login inviato (status '{}')", clientId, status);
 	}
 
 	/*

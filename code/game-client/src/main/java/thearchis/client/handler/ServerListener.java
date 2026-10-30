@@ -71,6 +71,7 @@ public class ServerListener implements Runnable {
 		switch (status) {
 		case REGISTER_OK -> System.out.println("[GUI] Registrazione: registrazione riuscita.");
 		case NICKNAME_ALREADY_EXISTS -> System.out.println("[GUI] Registrazione: nickname già esistente.");
+		case BAD_REQUEST -> System.out.println("[GUI] Registrazione: azione non consentita nello stato attuale.");
 		case DB_ERROR -> System.out.println("[GUI] Registrazione: errore del server/database.");
 		default -> System.out.println("[GUI] Registrazione: risposta sconosciuta.");
 		}
@@ -90,6 +91,10 @@ public class ServerListener implements Runnable {
 		}
 		case ALREADY_LOGGED_IN -> {
 			System.out.println("[GUI] Login: utente già loggato.");
+			client.clearPendingLogin();
+		}
+		case BAD_REQUEST -> {
+			System.out.println("[GUI] Login: azione non consentita nello stato attuale.");
 			client.clearPendingLogin();
 		}
 		case DB_ERROR -> {

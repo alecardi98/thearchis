@@ -7,6 +7,8 @@ import java.net.Socket;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import thearchis.common.game.ClientState;
 import thearchis.common.message.Message;
 
 public class ClientHandler implements Runnable {
@@ -18,11 +20,13 @@ public class ClientHandler implements Runnable {
 	private ObjectInputStream in;
 
 	private final int clientId;
+	private ClientState clientState;
 	private String nickname;
 
 	public ClientHandler(Socket socket, int clientId) {
 		this.socket = socket;
 		this.clientId = clientId;
+		clientState = ClientState.NOT_AUTHENTICATED;
 	}
 
 	/*
@@ -95,6 +99,14 @@ public class ClientHandler implements Runnable {
 
 	public String getNickname() {
 		return nickname;
+	}
+
+	public ClientState getClientState() {
+		return clientState;
+	}
+
+	public void setClientState(ClientState clientState) {
+		this.clientState = clientState;
 	}
 
 }

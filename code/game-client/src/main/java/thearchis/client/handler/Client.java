@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import thearchis.common.game.ClientState;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.UserData;
@@ -100,12 +101,12 @@ public class Client {
 		}
 	}
 
-	public synchronized void sendRegister(String nickname, String password) {
+	public synchronized void sendRegisterRequest(String nickname, String password) {
 		Message msg = new Message(MessageType.REGISTER_REQUEST, new UserData(nickname, password));
 		sendMessage(msg);
 	}
 
-	public synchronized void sendLogin(String nickname, String password) {
+	public synchronized void sendLoginRequest(String nickname, String password) {
 		pendingNickname = nickname;
 		Message msg = new Message(MessageType.LOGIN_REQUEST, new UserData(nickname, password));
 		sendMessage(msg);
@@ -121,6 +122,11 @@ public class Client {
 
 	public synchronized void clearPendingLogin() {
 		pendingNickname = null;
+	}
+	
+	public synchronized void sendCollectionRequest() {
+		Message msg = new Message(MessageType.COLLECTION_REQUEST, nickname);
+		sendMessage(msg);
 	}
 
 	/*
