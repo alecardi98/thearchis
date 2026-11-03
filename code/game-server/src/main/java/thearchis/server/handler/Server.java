@@ -3,11 +3,6 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.db.DBStatus;
-import thearchis.common.game.ClientState;
-import thearchis.common.message.Message;
-import thearchis.common.message.MessageType;
-import thearchis.common.message.UserData;
 import thearchis.server.db.DBManager;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -22,19 +17,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Server implements Runnable {
 
 	private static final Logger logger = LogManager.getLogger(Server.class);
-	private static Server server; // (Singleton)
+	private static Server instance;
 	private final int port = 443;
 	private ServerSocket serverSocket;
 	private volatile boolean running = true;
 
 	private DBManager dbManager;
-
 	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>(); // idclient,clienthandler
 	private final AtomicInteger idGenerator = new AtomicInteger(1);
 	private final ExecutorService clientThreadPool = Executors.newCachedThreadPool();
-	private final ConcurrentMap<String, Integer> loggedUsers = new ConcurrentHashMap<>(); // nickname,idclient
+	private final ConcurrentMap<String, Integer> authenticatedUsers = new ConcurrentHashMap<>(); // nickname,idclient
 
 	private Server() {
+	}
+
+	public static synchronized Server getInstance() {
+		if (instance == null) {
+			instance = new Server();
+		}
+		return instance;
 	}
 
 	@Override
@@ -49,7 +50,6 @@ public class Server implements Runnable {
 					Socket clientSocket = serverSocket.accept();
 					logger.info("Nuova connessione da {} accettata.", clientSocket.getInetAddress());
 
-					// libero il thread del server per gestire il client con un nuovo thread
 					clientThreadPool.submit(() -> initializeClient(clientSocket));
 
 				} catch (SocketException e) {
@@ -69,24 +69,21 @@ public class Server implements Runnable {
 		}
 	}
 
-	/*
-	 * Connessione al database
-	 */
 	private void dbConnection() {
 		dbManager = new DBManager();
 		dbManager.connect();
 	}
 
 	private void initializeClient(Socket socket) {
-		int clientId = idGenerator.getAndIncrement(); // assegnazione id con AtomicInteger
+		int clientId = idGenerator.getAndIncrement(); 
 		ClientHandler clientHandler = new ClientHandler(socket, clientId);
 
 		try {
 			clientHandler.init();
-			activeClients.put(clientId, clientHandler); // mappo il nuovo clienthandler
+			activeClients.put(clientId, clientHandler); 
 			logger.info("Client #{} : collegato con successo.", clientId);
 
-			clientThreadPool.submit(clientHandler); // nuovo thread per il clientHandler
+			clientThreadPool.submit(clientHandler); 
 
 		} catch (IOException e) {
 			logger.error("Client #{} : errore durante l'handshake ({})", clientId, e.getMessage());
@@ -103,8 +100,8 @@ public class Server implements Runnable {
 
 			String nickname = clientHandler.getNickname();
 			if (nickname != null) { // client autenticato
-				loggedUsers.remove(nickname);
-				logger.info("Client #{} : autenticazione utente '{}' rimossa.", nickname, clientId);
+				authenticatedUsers.remove(nickname);
+				logger.info("Client #{} : autenticazione utente '{}' rimossa.", clientId, nickname);
 			}
 		} else {
 			logger.warn("Client #{} : non trovato tra i client attivi al momento della rimozione.", clientId);
@@ -135,78 +132,19 @@ public class Server implements Runnable {
 		logger.info("Server arrestato e risorse liberate.");
 	}
 
-	public void handleRegister(int clientId, Message msg) {
-		UserData userData = (UserData) msg.getData();
-		String nickname = userData.getNickname();
-		String password = userData.getPassword();
-
-		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
-
-		ClientHandler clientHandler = activeClients.get(clientId);
-		if (clientHandler == null) {
-			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
-			return;
-		}
-
-		if (clientHandler.getClientState() != ClientState.NOT_AUTHENTICATED) {
-			logger.warn("Client #{} : tentativo di registrazione rifiutato (stato non valido: {}).", clientId,
-					clientHandler.getClientState());
-			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, DBStatus.BAD_REQUEST));
-			return;
-		}
-
-		DBStatus status = dbManager.registerUser(nickname, password);
-		Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
-		clientHandler.sendMessage(responseMsg);
-
-		logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
+	public boolean isUserAuthenticated(String nickname) {
+		return authenticatedUsers.containsKey(nickname);
 	}
 
-	public void handleLogin(int clientId, Message msg) {
-		UserData userData = (UserData) msg.getData();
-		String nickname = userData.getNickname();
-		String password = userData.getPassword();
-
-		logger.info("Client #{} : ricevuta richiesta di login (nickname '{}')", clientId, nickname);
-
-		ClientHandler clientHandler = activeClients.get(clientId);
-		if (clientHandler == null) {
-			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
-			return;
-		}
-
-		if (clientHandler.getClientState() != ClientState.NOT_AUTHENTICATED) {
-			logger.warn("Client #{} : tentativo di login rifiutato (stato non valido: {}).", clientId,
-					clientHandler.getClientState());
-			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.BAD_REQUEST));
-			return;
-		}
-
-		if (loggedUsers.containsKey(nickname)) { // nickname già loggato altrove
-			logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
-			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
-			return;
-		}
-
-		DBStatus status = dbManager.loginUser(nickname, password);
-
-		if (status == DBStatus.LOGIN_OK) {
-			clientHandler.setNickname(nickname);
-			clientHandler.setClientState(ClientState.MAIN_MENU);
-			loggedUsers.put(nickname, clientId);
-		}
-
-		clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, status));
-		logger.info("Client #{} : esito login inviato (status '{}')", clientId, status);
+	public void registerLoggedUser(String nickname, int clientId) {
+		authenticatedUsers.put(nickname, clientId);
 	}
 
 	/*
 	 * Getter & Setter
 	 */
-	public static synchronized Server getServer() {
-		if (server == null) {
-			server = new Server();
-		}
-		return server;
+	public DBManager getDbManager() {
+		return dbManager;
 	}
+
 }

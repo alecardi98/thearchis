@@ -17,9 +17,6 @@ public class ClientMain {
 
 		client.sendLoginRequest("alecardi98", "12345"); // tentativo doppio login
 		Thread.sleep(3000);
-
-		client.sendCollectionRequest(); //accesso alla collezione dal menu principale
-		Thread.sleep(3000);
 		
 		
 		client.serverDisconnection();

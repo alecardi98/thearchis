@@ -42,14 +42,11 @@ public class ClientHandler implements Runnable {
 	public void run() {
 		try {
 			Object obj;
-			// gestione dei pacchetti in entrata delegata al server
 			while ((obj = in.readObject()) != null) {
-				Message msg = (Message) obj;
-
-				switch (msg.getType()) {
-				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
-				case LOGIN_REQUEST -> Server.getServer().handleLogin(clientId, msg);
-				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
+				if (obj instanceof Message msg) {
+					MessageDispatcher.getInstance().dispatch(this, msg);
+				} else {
+					logger.warn("Client #{} : oggetto non riconosciuto ricevuto dal socket.", clientId);
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
@@ -70,7 +67,7 @@ public class ClientHandler implements Runnable {
 		} catch (IOException e) {
 			logger.debug("Client #{} : socket del client già chiuso o non raggiungibile.", clientId);
 		} finally {
-			Server.getServer().removeClient(clientId);
+			Server.getInstance().removeClient(clientId);
 		}
 	}
 
@@ -84,14 +81,17 @@ public class ClientHandler implements Runnable {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Client #{} : errore I/O durante l'invio del pacchetto '{}' al client.",
-					msg != null ? msg.getClass().getSimpleName() : "null", clientId, e.getMessage());
+			logger.error("Client #{} : errore I/O durante l'invio del pacchetto a client #{}.", clientId,
+					e.getMessage());
 		}
 	}
 
 	/*
 	 * Getter & Setter
 	 */
+	public int getClientId() {
+		return clientId;
+	}
 
 	public void setNickname(String nickname) {
 		this.nickname = nickname;
@@ -108,5 +108,4 @@ public class ClientHandler implements Runnable {
 	public void setClientState(ClientState clientState) {
 		this.clientState = clientState;
 	}
-
 }
