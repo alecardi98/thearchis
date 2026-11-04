@@ -6,8 +6,8 @@ public class Hero {
 
 	public Hero(HeroName name, HeroPower power) {
 
-		if (name != HeroName.Aethelgard && name != HeroName.Brakkar && name != HeroName.Lyra && name != HeroName.Malakor
-				&& name != HeroName.Generico) {
+		if (name != HeroName.AETHELGARD && name != HeroName.BRAKKAR && name != HeroName.LYRA && name != HeroName.MALAKOR
+				&& name != HeroName.NONE) {
 			throw new InvalidHeroDataException(name, "name");
 		} else {
 			this.name = name;
