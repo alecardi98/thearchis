@@ -120,7 +120,65 @@ public class CollectionController {
 	}
 
 	public void handleDisenchantRequest(ClientHandler clientHandler, Message msg) {
-		// TODO Auto-generated method stub
+		int clientId = clientHandler.getClientId();
+		logger.info("Client #{}: ricevuta richiesta di disenchant.", clientId);
+
+		if (clientHandler.getPlayer() == null) {
+			logger.warn("Client #{}: richiesta disenchant rifiutata (utente non autenticato).", clientId);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+			return;
+		}
+
+		String nickname = clientHandler.getPlayer().getNickname();
+		Server server = Server.getInstance();
+		if (!server.isUserAuthenticated(nickname)) {
+			logger.warn("Client #{}: richiesta disenchant rifiutata (utente {} non autenticato).", clientId, nickname);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+			return;
+		}
+
+		if (msg == null || msg.getData() == null) {
+			logger.warn("Client #{}: richiesta disenchant rifiutata (messaggio o payload nullo).", clientId, nickname);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+			return;
+		}
+
+		if (!(msg.getData() instanceof CollectionData)) {
+			logger.warn("Client #{}: richiesta disenchant rifiutata (payload non di tipo CollectionData).", clientId,
+					nickname);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+			return;
+		}
+
+		CollectionData cardToCraft = (CollectionData) msg.getData();
+		int cardId = cardToCraft.getCardId();
+
+		Card card = MasterSet.getInstance().getCardById(cardId);
+		if (card == null) {
+			logger.warn("Client #{}: richiesta disenchant fallita (carta #{} non trovata nel MasterSet).", clientId, cardId);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+			return;
+		}
+
+		if (card.isConstrained()) {
+			logger.warn("Client #{}: richiesta disenchant rifiutata (carta #{} vincolata).", clientId, cardId);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+			return;
+		}
+
+		int disenchantValue = card.getDisenchantValue();
+
+		DBResult<Player> result = server.getDbManager().disenchantCard(nickname, cardId, disenchantValue);
+		clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
+
+		DBStatus status = result.getStatus();
+		logger.info("Client #{}: esito disenchant per carta #{} inviato (status {}).", clientId, cardId, status);
 	}
 
 }

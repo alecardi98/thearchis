@@ -24,6 +24,7 @@ import org.apache.logging.log4j.Logger;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
 public class DBManager {
 
@@ -38,71 +39,67 @@ public class DBManager {
 	}
 
 	public synchronized void connect() {
-	    if (mongoClient == null) {
-	        
-	        Dotenv dotenv = Dotenv.configure()
-	                .ignoreIfMalformed()
-	                .ignoreIfMissing()
-	                .load();
+		if (mongoClient == null) {
 
-	        String rawUri = dotenv.get("CONNECTION_URI");
-	        if (rawUri == null || rawUri.isBlank()) {
-	            rawUri = System.getenv("CONNECTION_URI");
-	        }
+			Dotenv dotenv = Dotenv.configure().ignoreIfMalformed().ignoreIfMissing().load();
 
-	        logger.info("URI Caricato dal file .env/ambiente.");
+			String rawUri = dotenv.get("CONNECTION_URI");
+			if (rawUri == null || rawUri.isBlank()) {
+				rawUri = System.getenv("CONNECTION_URI");
+			}
 
-	        if (rawUri == null || rawUri.isBlank()) {
-	            logger.fatal("Impossibile avviare il DB: CONNECTION_URI non trovata nel file .env o nelle variabili di sistema.");
-	            throw new RuntimeException("Configurazione MongoDB mancante.");
-	        }
+			logger.info("URI Caricato dal file .env/ambiente.");
 
-	        String connectionUri = sanitizeSrvUri(rawUri);
+			if (rawUri == null || rawUri.isBlank()) {
+				logger.fatal(
+						"Impossibile avviare il DB: CONNECTION_URI non trovata nel file .env o nelle variabili di sistema.");
+				throw new RuntimeException("Configurazione MongoDB mancante.");
+			}
 
-	        try {
-	            mongoClient = MongoClients.create(connectionUri);
-	            database = mongoClient.getDatabase(DB_NAME);
+			String connectionUri = sanitizeSrvUri(rawUri);
 
-	            database.runCommand(new BsonDocument("ping", new BsonInt32(1)));
+			try {
+				mongoClient = MongoClients.create(connectionUri);
+				database = mongoClient.getDatabase(DB_NAME);
 
-	            MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
-	            users.createIndex(Indexes.ascending("nickname"), new IndexOptions().unique(true));
+				database.runCommand(new BsonDocument("ping", new BsonInt32(1)));
 
-	            logger.info("Connessione a MongoDB ({}) verificata e creata con successo.", DB_NAME);
+				MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
+				users.createIndex(Indexes.ascending("nickname"), new IndexOptions().unique(true));
 
-	        } catch (Exception e) {
-	            logger.fatal("Impossibile connettersi a MongoDB Atlas: {}", e.getMessage());
-	            close();
-	            throw new RuntimeException("Errore critico di connessione al Database.", e);
-	        }
-	    }
+				logger.info("Connessione a MongoDB ({}) verificata e creata con successo.", DB_NAME);
+
+			} catch (Exception e) {
+				logger.fatal("Impossibile connettersi a MongoDB Atlas: {}", e.getMessage());
+				close();
+				throw new RuntimeException("Errore critico di connessione al Database.", e);
+			}
+		}
 	}
 
 	private String sanitizeSrvUri(String uri) {
-	    if (!uri.contains("mongodb+srv://")) {
-	        return uri;
-	    }
+		if (!uri.contains("mongodb+srv://")) {
+			return uri;
+		}
 
-	    logger.info("Rilevato formato SRV: conversione dinamica ai nodi diretti dello shard.");
+		logger.info("Rilevato formato SRV: conversione dinamica ai nodi diretti dello shard.");
 
-	    int schemeEnd = uri.indexOf("://") + 3;
-	    String afterScheme = uri.substring(schemeEnd);
-	    int atIndex = afterScheme.indexOf("@");
+		int schemeEnd = uri.indexOf("://") + 3;
+		String afterScheme = uri.substring(schemeEnd);
+		int atIndex = afterScheme.indexOf("@");
 
-	    if (atIndex == -1) {
-	        return uri;
-	    }
+		if (atIndex == -1) {
+			return uri;
+		}
 
-	    String credentials = afterScheme.substring(0, atIndex);
+		String credentials = afterScheme.substring(0, atIndex);
 
-	    return String.format(
-	        "mongodb://%s@ac-1ss9wkl-shard-00-00.jp638fv.mongodb.net:27017," +
-	        "ac-1ss9wkl-shard-00-01.jp638fv.mongodb.net:27017," +
-	        "ac-1ss9wkl-shard-00-02.jp638fv.mongodb.net:27017/" +
-	        "%s?ssl=true&replicaSet=atlas-wejixd-shard-0&authSource=admin&retryWrites=true&w=majority",
-	        credentials,
-	        DB_NAME
-	    );
+		return String.format(
+				"mongodb://%s@ac-1ss9wkl-shard-00-00.jp638fv.mongodb.net:27017,"
+						+ "ac-1ss9wkl-shard-00-01.jp638fv.mongodb.net:27017,"
+						+ "ac-1ss9wkl-shard-00-02.jp638fv.mongodb.net:27017/"
+						+ "%s?ssl=true&replicaSet=atlas-wejixd-shard-0&authSource=admin&retryWrites=true&w=majority",
+				credentials, DB_NAME);
 	}
 
 	public void close() {
@@ -272,7 +269,61 @@ public class DBManager {
 			return result;
 
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante il craft della carta #{} per '{}': {}", cardId, nickname,
+			logger.error("Errore MongoDB durante il craft della carta #{} per '{}' ({}).", cardId, nickname,
+					e.getMessage());
+			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			return result;
+		}
+	}
+
+	public DBResult<Player> disenchantCard(String nickname, int cardId, int disenchantValue) {
+		try {
+			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
+			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
+
+			if (userDoc == null) {
+				logger.warn("Disenchant fallito: utente '{}' non trovato nel DB.", nickname);
+				DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+				return result;
+			}
+
+			Document collectionDoc = userDoc.get("collection", Document.class);
+			String cardIdKey = String.valueOf(cardId);
+
+			if (collectionDoc == null || !collectionDoc.containsKey(cardIdKey)) {
+				logger.warn("Disenchant fallito per '{}': carta #{} non posseduta.", nickname, cardId);
+				DBResult<Player> result = new DBResult<>(DBStatus.CARD_NOT_OWNED, null);
+				return result;
+			}
+
+			int currentQuantity = collectionDoc.getInteger(cardIdKey, 0);
+			if (currentQuantity <= 0) {
+				logger.warn("Disenchant fallito per '{}': quantità insufficiente per la carta #{}.", nickname, cardId);
+				DBResult<Player> result = new DBResult<>(DBStatus.CARD_NOT_OWNED, null);
+				return result;
+			}
+
+			String fieldPath = "collection." + cardIdKey;
+			Bson updateQuery;
+
+			if (currentQuantity == 1) {
+				updateQuery = Updates.combine(Updates.inc("dust", disenchantValue), Updates.unset(fieldPath));
+			} else {
+				updateQuery = Updates.combine(Updates.inc("dust", disenchantValue), Updates.inc(fieldPath, -1));
+			}
+
+			users.updateOne(Filters.eq("nickname", nickname), updateQuery);
+
+			Document updatedUserDoc = users.find(Filters.eq("nickname", nickname)).first();
+			Player updatedPlayer = parsePlayerFromDocument(updatedUserDoc);
+
+			logger.info("Carta #{} disincantata con successo da '{}'. Nuova polvere: {}.", cardId, nickname,
+					updatedPlayer.getDust());
+			DBResult<Player> result = new DBResult<>(DBStatus.DISENCHANT_OK, updatedPlayer);
+			return result;
+
+		} catch (MongoException e) {
+			logger.error("Errore MongoDB durante il disenchant della carta #{} per '{}' ({}).", cardId, nickname,
 					e.getMessage());
 			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
 			return result;

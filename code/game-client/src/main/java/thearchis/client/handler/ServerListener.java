@@ -75,6 +75,11 @@ public class ServerListener implements Runnable {
 			handleCraftResponse(result);
 
 		}
+		case DISENCHANT_RESPONSE -> {
+			DBResult<Player> result = (DBResult<Player>) msg.getData();
+			handleDisenchantResponse(result);
+
+		}
 		default -> logger.error("Tipo di messaggio non gestito: {}", msg.getType());
 		}
 	}
@@ -142,6 +147,23 @@ public class ServerListener implements Runnable {
 		case BAD_REQUEST -> System.out.println("[GUI] Craft: azione non consentita o carta vincolata.");
 		case DB_ERROR -> System.out.println("[GUI] Craft: errore del server/database.");
 		default -> System.out.println("[GUI] Craft: risposta sconosciuta.");
+		}
+	}
+	
+	private void handleDisenchantResponse(DBResult<Player> result) {
+		DBStatus status = result.getStatus();
+		Player player = result.getData();
+		logger.info("Esito disenchant: {}.", status);
+
+		switch (status) {
+		case DISENCHANT_OK -> {
+			System.out.println("[GUI] Disenchant: carta disincantata con successo.");
+			client.setPlayer(player);
+		}
+		case CARD_NOT_OWNED -> System.out.println("[GUI] Disenchant: carta non posseduta.");
+		case BAD_REQUEST -> System.out.println("[GUI] Disenchant: azione non consentita o carta vincolata.");
+		case DB_ERROR -> System.out.println("[GUI] Disenchant: errore del server/database.");
+		default -> System.out.println("[GUI] Disenchant: risposta sconosciuta.");
 		}
 	}
 
