@@ -12,6 +12,8 @@ import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Updates;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import thearchis.common.card.Card;
+import thearchis.common.card.MasterSet;
 import thearchis.common.game.Collection;
 import thearchis.common.game.Player;
 import thearchis.common.message.OperationResult;
@@ -113,33 +115,37 @@ public class DBManager {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 
+			Document initialCollection = new Document();
+			for (Card card : MasterSet.getInstance().getAllCards().values()) {
+				if (card.isConstrained()) {
+					initialCollection.append(String.valueOf(card.getId()), 2);
+				}
+			}
+
+			// TODO aggiungere mazzi vuoti
+
 			Document newUser = new Document().append("nickname", nickname).append("password", password)
 					.append("coins", 100).append("dust", 0).append("wins", 0).append("losses", 0)
-					.append("collection", new Document()).append("decks", new java.util.ArrayList<>());
-
-			// TODO aggiungere le carte di base che hanno tutti
+					.append("collection", initialCollection).append("decks", new java.util.ArrayList<>());
 
 			users.insertOne(newUser);
 
-			logger.info("Nuovo account e profilo inizializzati con successo per: '{}'.", nickname);
+			logger.info("Nuovo account e profilo inizializzati con successo per: '{}' con {} carte base.", nickname,
+					initialCollection.size());
 
-			OperationResult<Void> result = new OperationResult<>(OperationStatus.REGISTER_OK, null);
-			return result;
+			return new OperationResult<>(OperationStatus.REGISTER_OK, null);
 
 		} catch (MongoWriteException e) {
-			if (e.getError().getCode() == 11000) { // Codice 11000 DuplicateKeyError (nickname già esistente)
+			if (e.getError().getCode() == 11000) { // DuplicateKeyError
 				logger.warn("Registrazione fallita: il nickname '{}' è già in uso.", nickname);
-				OperationResult<Void> result = new OperationResult<>(OperationStatus.NICKNAME_ALREADY_EXISTS, null);
-				return result;
+				return new OperationResult<>(OperationStatus.NICKNAME_ALREADY_EXISTS, null);
 			}
 			logger.error("Errore di scrittura MongoDB per '{}': {}", nickname, e.getMessage());
-			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
-			return result;
+			return new OperationResult<>(OperationStatus.DB_ERROR, null);
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante la registrazione di '{}': {}", nickname, e.getMessage());
-			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
-			return result;
+			return new OperationResult<>(OperationStatus.DB_ERROR, null);
 		}
 	}
 
