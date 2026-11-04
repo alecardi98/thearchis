@@ -6,11 +6,12 @@ import java.io.ObjectInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.collection.Collection;
-import thearchis.common.db.DBResult;
-import thearchis.common.db.DBStatus;
+import thearchis.common.game.ClientState;
+import thearchis.common.game.Collection;
 import thearchis.common.game.Player;
 import thearchis.common.message.Message;
+import thearchis.common.message.OperationResult;
+import thearchis.common.message.OperationStatus;
 
 public class ServerListener implements Runnable {
 
@@ -58,33 +59,39 @@ public class ServerListener implements Runnable {
 	private void processMessage(Message msg) {
 		switch (msg.getType()) {
 		case REGISTER_RESPONSE -> {
-			DBResult<Void> result = (DBResult<Void>) msg.getData();
-			DBStatus status = result.getStatus();
+			OperationResult<Void> result = (OperationResult<Void>) msg.getData();
+			OperationStatus status = result.getStatus();
 			handleRegisterResponse(status);
 		}
 		case LOGIN_RESPONSE -> {
-			DBResult<Player> result = (DBResult<Player>) msg.getData();
+			OperationResult<Player> result = (OperationResult<Player>) msg.getData();
 			handleLoginResponse(result);
 		}
 		case COLLECTION_RESPONSE -> {
-			DBResult<Collection> result = (DBResult<Collection>) msg.getData();
+			OperationResult<Collection> result = (OperationResult<Collection>) msg.getData();
 			handleCollectionResponse(result);
 		}
 		case CRAFT_RESPONSE -> {
-			DBResult<Player> result = (DBResult<Player>) msg.getData();
+			OperationResult<Player> result = (OperationResult<Player>) msg.getData();
 			handleCraftResponse(result);
 
 		}
 		case DISENCHANT_RESPONSE -> {
-			DBResult<Player> result = (DBResult<Player>) msg.getData();
+			OperationResult<Player> result = (OperationResult<Player>) msg.getData();
 			handleDisenchantResponse(result);
 
 		}
+		case BACKNAVIGATION_RESPONSE -> {
+			OperationResult<ClientState> result = (OperationResult<ClientState>) msg.getData();
+			handleBackNavigationResponse(result);
+
+		}
+
 		default -> logger.error("Tipo di messaggio non gestito: {}", msg.getType());
 		}
 	}
 
-	private void handleRegisterResponse(DBStatus status) {
+	private void handleRegisterResponse(OperationStatus status) {
 		logger.info("Esito registrazione: {}", status);
 
 		switch (status) {
@@ -96,8 +103,8 @@ public class ServerListener implements Runnable {
 		}
 	}
 
-	private void handleLoginResponse(DBResult<Player> result) {
-		DBStatus status = result.getStatus();
+	private void handleLoginResponse(OperationResult<Player> result) {
+		OperationStatus status = result.getStatus();
 		Player player = result.getData();
 		logger.info("Esito login: {}.", status);
 
@@ -115,8 +122,8 @@ public class ServerListener implements Runnable {
 		}
 	}
 
-	private void handleCollectionResponse(DBResult<Collection> result) {
-		DBStatus status = result.getStatus();
+	private void handleCollectionResponse(OperationResult<Collection> result) {
+		OperationStatus status = result.getStatus();
 		Collection collection = result.getData();
 		logger.info("Esito collezione: {}.", status);
 
@@ -133,8 +140,8 @@ public class ServerListener implements Runnable {
 		}
 	}
 
-	private void handleCraftResponse(DBResult<Player> result) {
-		DBStatus status = result.getStatus();
+	private void handleCraftResponse(OperationResult<Player> result) {
+		OperationStatus status = result.getStatus();
 		Player player = result.getData();
 		logger.info("Esito craft: {}.", status);
 
@@ -149,9 +156,9 @@ public class ServerListener implements Runnable {
 		default -> System.out.println("[GUI] Craft: risposta sconosciuta.");
 		}
 	}
-	
-	private void handleDisenchantResponse(DBResult<Player> result) {
-		DBStatus status = result.getStatus();
+
+	private void handleDisenchantResponse(OperationResult<Player> result) {
+		OperationStatus status = result.getStatus();
 		Player player = result.getData();
 		logger.info("Esito disenchant: {}.", status);
 
@@ -164,6 +171,20 @@ public class ServerListener implements Runnable {
 		case BAD_REQUEST -> System.out.println("[GUI] Disenchant: azione non consentita o carta vincolata.");
 		case DB_ERROR -> System.out.println("[GUI] Disenchant: errore del server/database.");
 		default -> System.out.println("[GUI] Disenchant: risposta sconosciuta.");
+		}
+	}
+
+	private void handleBackNavigationResponse(OperationResult<ClientState> result) {
+		OperationStatus status = result.getStatus();
+		ClientState destination = result.getData();
+		logger.info("Esito backnavigation: {}.", status);
+
+		switch (status) {
+		case BACKNAVIGATION_OK ->
+			System.out.println("[GUI] BackNavigation: arrivato a " + destination + " con successo.");
+		case BAD_REQUEST ->
+			System.out.println("[GUI] BackNavigation: errore nei dati o azione non consentita.");
+		default -> System.out.println("[GUI] BackNavigation: risposta sconosciuta.");
 		}
 	}
 

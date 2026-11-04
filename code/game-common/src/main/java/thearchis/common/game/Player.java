@@ -2,8 +2,6 @@ package thearchis.common.game;
 
 import java.io.Serializable;
 
-import thearchis.common.collection.Collection;
-
 public class Player implements Serializable {
 
 	private String nickname;

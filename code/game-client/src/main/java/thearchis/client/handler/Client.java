@@ -11,6 +11,8 @@ import org.apache.logging.log4j.Logger;
 
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
+import thearchis.common.message.BackNavigationData;
+import thearchis.common.game.ClientState;
 import thearchis.common.game.Player;
 import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.CollectionData;
@@ -128,6 +130,12 @@ public class Client {
 	public synchronized void sendDisenchantRequest(int cardId) {
 		CollectionData collectionData = new CollectionData(cardId);
 		Message msg = new Message(MessageType.DISENCHANT_REQUEST, collectionData);
+		sendMessage(msg);
+	}
+	
+	public synchronized void sendBackNavigationRequest(ClientState destination) {
+		BackNavigationData backNavigationData = new BackNavigationData(destination);
+		Message msg = new Message(MessageType.BACKNAVIGATION_REQUEST, backNavigationData);
 		sendMessage(msg);
 	}
 

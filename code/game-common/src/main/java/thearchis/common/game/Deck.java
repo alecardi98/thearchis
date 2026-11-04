@@ -1,4 +1,4 @@
-package thearchis.common.deck;
+package thearchis.common.game;
 
 import java.io.Serializable;
 import java.util.HashMap;

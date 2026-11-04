@@ -3,14 +3,15 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.db.DBResult;
-import thearchis.common.db.DBStatus;
 import thearchis.common.game.ClientState;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
+import thearchis.common.message.OperationResult;
+import thearchis.common.message.OperationStatus;
 import thearchis.server.controller.AuthenticationController;
 import thearchis.server.controller.CollectionController;
 import thearchis.server.controller.GameController;
+import thearchis.server.controller.BackNavigationController;
 import thearchis.server.controller.ShopController;
 
 public class MessageDispatcher {
@@ -22,12 +23,14 @@ public class MessageDispatcher {
 	private final ShopController shopController;
 	private final CollectionController collectionController;
 	private final GameController gameController;
+	private final BackNavigationController navigationController;
 
 	private MessageDispatcher() {
 		this.authenticationController = new AuthenticationController();
 		this.shopController = new ShopController();
 		this.collectionController = new CollectionController();
 		this.gameController = new GameController();
+		this.navigationController = new BackNavigationController();
 	}
 
 	public static synchronized MessageDispatcher getInstance() {
@@ -56,6 +59,7 @@ public class MessageDispatcher {
 		case COLLECTION_REQUEST -> collectionController.handleCollectionRequest(clientHandler);
 		case CRAFT_REQUEST -> collectionController.handleCraftRequest(clientHandler, msg);
 		case DISENCHANT_REQUEST -> collectionController.handleDisenchantRequest(clientHandler, msg);
+		case BACKNAVIGATION_REQUEST -> navigationController.handleBackNavigationRequest(clientHandler, msg);
 
 		default -> logger.error("Client #{} : tipo di messaggio sconosciuto ({}).", clientId, type);
 		}
@@ -68,8 +72,11 @@ public class MessageDispatcher {
 	private boolean isAllowedInState(MessageType type, ClientState state) {
 		return switch (state) {
 		case NOT_AUTHENTICATED -> type == MessageType.REGISTER_REQUEST || type == MessageType.LOGIN_REQUEST;
-		case MAIN_MENU -> type == MessageType.COLLECTION_REQUEST;
-		case IN_COLLECTION -> type == MessageType.CRAFT_REQUEST || type == MessageType.DISENCHANT_REQUEST;
+		case MAIN_MENU -> type == MessageType.COLLECTION_REQUEST || type == MessageType.BACKNAVIGATION_REQUEST;
+		case IN_COLLECTION -> type == MessageType.CRAFT_REQUEST || type == MessageType.DISENCHANT_REQUEST
+				|| type == MessageType.BACKNAVIGATION_REQUEST;
+
+		// TODO aggiungere BACKNAVIGATION_REQUEST ai menu che lo consentono
 
 		default -> false;
 		};
@@ -82,11 +89,12 @@ public class MessageDispatcher {
 		case COLLECTION_REQUEST -> MessageType.COLLECTION_RESPONSE;
 		case CRAFT_REQUEST -> MessageType.CRAFT_RESPONSE;
 		case DISENCHANT_REQUEST -> MessageType.DISENCHANT_RESPONSE;
-		
+		case BACKNAVIGATION_REQUEST -> MessageType.BACKNAVIGATION_RESPONSE;
+
 		default -> MessageType.ERROR_RESPONSE;
 		};
 
-		DBResult<?> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+		OperationResult<?> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 		clientHandler.sendMessage(new Message(responseType, result));
 	}
 

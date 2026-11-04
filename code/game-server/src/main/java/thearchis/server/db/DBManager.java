@@ -12,10 +12,10 @@ import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Updates;
 
 import io.github.cdimascio.dotenv.Dotenv;
-import thearchis.common.collection.Collection;
-import thearchis.common.db.DBResult;
-import thearchis.common.db.DBStatus;
+import thearchis.common.game.Collection;
 import thearchis.common.game.Player;
+import thearchis.common.message.OperationResult;
+import thearchis.common.message.OperationStatus;
 
 import java.util.Map;
 
@@ -109,7 +109,7 @@ public class DBManager {
 		}
 	}
 
-	public DBResult<Void> registerUser(String nickname, String password) {
+	public OperationResult<Void> registerUser(String nickname, String password) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 
@@ -123,46 +123,46 @@ public class DBManager {
 
 			logger.info("Nuovo account e profilo inizializzati con successo per: '{}'.", nickname);
 
-			DBResult<Void> result = new DBResult<>(DBStatus.REGISTER_OK, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.REGISTER_OK, null);
 			return result;
 
 		} catch (MongoWriteException e) {
 			if (e.getError().getCode() == 11000) { // Codice 11000 DuplicateKeyError (nickname già esistente)
 				logger.warn("Registrazione fallita: il nickname '{}' è già in uso.", nickname);
-				DBResult<Void> result = new DBResult<>(DBStatus.NICKNAME_ALREADY_EXISTS, null);
+				OperationResult<Void> result = new OperationResult<>(OperationStatus.NICKNAME_ALREADY_EXISTS, null);
 				return result;
 			}
 			logger.error("Errore di scrittura MongoDB per '{}': {}", nickname, e.getMessage());
-			DBResult<Void> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante la registrazione di '{}': {}", nickname, e.getMessage());
-			DBResult<Void> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
 	}
 
-	public DBResult<Player> loginUser(String nickname, String password) {
+	public OperationResult<Player> loginUser(String nickname, String password) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null || !password.equals(userDoc.getString("password"))) {
 				logger.warn("Login fallito per '{}' (credenziali errate).", nickname);
-				DBResult<Player> result = new DBResult<>(DBStatus.INVALID_CREDENTIALS, null);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.INVALID_CREDENTIALS, null);
 				return result;
 			}
 
 			logger.info("Login eseguito con successo per '{}'.", nickname);
 
 			Player player = parsePlayerFromDocument(userDoc);
-			DBResult<Player> result = new DBResult<>(DBStatus.LOGIN_OK, player);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.LOGIN_OK, player);
 			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante il login di '{}' ({}).", nickname, e.getMessage());
-			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
 	}
@@ -187,14 +187,14 @@ public class DBManager {
 		return player;
 	}
 
-	public DBResult<Collection> getUserCollection(String nickname) {
+	public OperationResult<Collection> getUserCollection(String nickname) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
 				logger.warn("Recupero collezione fallito: utente '{}' non trovato.", nickname);
-				DBResult<Collection> result = new DBResult<>(DBStatus.DB_ERROR, null);
+				OperationResult<Collection> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 				return result;
 			}
 
@@ -202,12 +202,12 @@ public class DBManager {
 			Collection collection = parseCollectionFromDocument(collectionDoc);
 
 			logger.info("Collezione recuperata con successo per l'utente '{}'.", nickname);
-			DBResult<Collection> result = new DBResult<>(DBStatus.COLLECTION_OK, collection);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.COLLECTION_OK, collection);
 			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante il recupero della collezione per '{}' ({})", nickname, e.getMessage());
-			DBResult<Collection> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
 	}
@@ -237,14 +237,14 @@ public class DBManager {
 		return collection;
 	}
 
-	public DBResult<Player> craftCard(String nickname, int cardId, int craftCost) {
+	public OperationResult<Player> craftCard(String nickname, int cardId, int craftCost) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
 				logger.warn("Craft fallito: utente '{}' non trovato nel DB.", nickname);
-				DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
@@ -252,7 +252,7 @@ public class DBManager {
 			if (currentDust < craftCost) {
 				logger.warn("Craft fallito per '{}': polvere insufficiente (richiesta: {}, posseduta: {}).", nickname,
 						craftCost, currentDust);
-				DBResult<Player> result = new DBResult<>(DBStatus.NOT_ENOUGH_DUST, null);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.NOT_ENOUGH_DUST, null);
 				return result;
 			}
 
@@ -265,25 +265,25 @@ public class DBManager {
 
 			logger.info("Carta #{} craftata con successo da '{}'. Nuova polvere: {}.", cardId, nickname,
 					updatedPlayer.getDust());
-			DBResult<Player> result = new DBResult<>(DBStatus.CRAFT_OK, updatedPlayer);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.CRAFT_OK, updatedPlayer);
 			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante il craft della carta #{} per '{}' ({}).", cardId, nickname,
 					e.getMessage());
-			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
 	}
 
-	public DBResult<Player> disenchantCard(String nickname, int cardId, int disenchantValue) {
+	public OperationResult<Player> disenchantCard(String nickname, int cardId, int disenchantValue) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
 				logger.warn("Disenchant fallito: utente '{}' non trovato nel DB.", nickname);
-				DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
@@ -292,14 +292,14 @@ public class DBManager {
 
 			if (collectionDoc == null || !collectionDoc.containsKey(cardIdKey)) {
 				logger.warn("Disenchant fallito per '{}': carta #{} non posseduta.", nickname, cardId);
-				DBResult<Player> result = new DBResult<>(DBStatus.CARD_NOT_OWNED, null);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.CARD_NOT_OWNED, null);
 				return result;
 			}
 
 			int currentQuantity = collectionDoc.getInteger(cardIdKey, 0);
 			if (currentQuantity <= 0) {
 				logger.warn("Disenchant fallito per '{}': quantità insufficiente per la carta #{}.", nickname, cardId);
-				DBResult<Player> result = new DBResult<>(DBStatus.CARD_NOT_OWNED, null);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.CARD_NOT_OWNED, null);
 				return result;
 			}
 
@@ -319,13 +319,13 @@ public class DBManager {
 
 			logger.info("Carta #{} disincantata con successo da '{}'. Nuova polvere: {}.", cardId, nickname,
 					updatedPlayer.getDust());
-			DBResult<Player> result = new DBResult<>(DBStatus.DISENCHANT_OK, updatedPlayer);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedPlayer);
 			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante il disenchant della carta #{} per '{}' ({}).", cardId, nickname,
 					e.getMessage());
-			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
 	}

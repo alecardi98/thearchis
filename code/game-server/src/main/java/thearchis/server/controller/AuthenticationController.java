@@ -3,12 +3,12 @@ package thearchis.server.controller;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.db.DBResult;
-import thearchis.common.db.DBStatus;
 import thearchis.common.game.ClientState;
 import thearchis.common.game.Player;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
+import thearchis.common.message.OperationResult;
+import thearchis.common.message.OperationStatus;
 import thearchis.common.message.AuthenticationData;
 import thearchis.server.handler.ClientHandler;
 import thearchis.server.handler.Server;
@@ -26,7 +26,7 @@ public class AuthenticationController {
 
 		if (msg == null || msg.getData() == null) {
 			logger.warn("Client #{}: richiesta registrazione rifiutata (messaggio o payload nullo).", clientId);
-			DBResult<Void> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 			return;
 		}
@@ -34,7 +34,7 @@ public class AuthenticationController {
 		if (!(msg.getData() instanceof AuthenticationData)) {
 			logger.warn("Client #{}: richiesta registrazione rifiutata (payload non di tipo AuthenticationData).",
 					clientId);
-			DBResult<Void> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 			return;
 		}
@@ -45,17 +45,17 @@ public class AuthenticationController {
 
 		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
 			logger.warn("Client #{}: richiesta registrazione rifiutata (credenziali nulle o vuote).", clientId);
-			DBResult<Void> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 			return;
 		}
 
 		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
 
-		DBResult<Void> result = Server.getInstance().getDbManager().registerUser(nickname, password);
+		OperationResult<Void> result = Server.getInstance().getDbManager().registerUser(nickname, password);
 		clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 
-		DBStatus status = result.getStatus();
+		OperationStatus status = result.getStatus();
 		logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
 	}
 
@@ -65,14 +65,14 @@ public class AuthenticationController {
 
 		if (msg == null || msg.getData() == null) {
 			logger.warn("Client #{}: richiesta login rifiutata (messaggio o payload nullo).", clientId);
-			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
 		}
 
 		if (!(msg.getData() instanceof AuthenticationData)) {
 			logger.warn("Client #{}: richiesta login rifiutata (payload non di tipo AuthenticationData).", clientId);
-			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
 		}
@@ -83,7 +83,7 @@ public class AuthenticationController {
 
 		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
 			logger.warn("Client #{}: richiesta login rifiutata (credenziali nulle o vuote).", clientId);
-			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
 		}
@@ -91,15 +91,15 @@ public class AuthenticationController {
 		Server server = Server.getInstance();
 		if (server.isUserAuthenticated(nickname)) {
 			logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
-			DBResult<Player> result = new DBResult<>(DBStatus.ALREADY_LOGGED_IN, null);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.ALREADY_LOGGED_IN, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
 		}
 
-		DBResult<Player> result = server.getDbManager().loginUser(nickname, password);
-		DBStatus status = result.getStatus();
+		OperationResult<Player> result = server.getDbManager().loginUser(nickname, password);
+		OperationStatus status = result.getStatus();
 
-		if (status == DBStatus.LOGIN_OK) {
+		if (status == OperationStatus.LOGIN_OK) {
 			Player player = result.getData();
 			clientHandler.setPlayer(player);
 			clientHandler.setClientState(ClientState.MAIN_MENU);
