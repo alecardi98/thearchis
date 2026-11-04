@@ -4,23 +4,22 @@ import thearchis.common.hero.HeroName;
 
 public class Creature extends Card {
 
-	private final CreatureSubtype sottotipo; // sottotipo della creatura
+	private final CreatureSubtype subtype; // sottotipo della creatura
 	private boolean summoningSickness; // handicap di evocazione
 	private int atk; // valore di attacco della creatura
 	private int def; // valore di difesa della creatura
 
-	public Creature(int id, String name, int cost, CardType tipo, CreatureSubtype sottotipo, Rarity rarità, int atk,
-			int def, HeroName eroe) {
-		super(id, name, cost, tipo, rarità, eroe);
+	public Creature(int id, String name, int manaCost, CardType type, CardRarity rarity, HeroName hero,
+			String description, boolean constrained, CreatureSubtype subtype, int atk, int def) {
+		super(id, name, manaCost, type, rarity, hero, description, constrained);
 
 		summoningSickness = true;
 
-		if (sottotipo != CreatureSubtype.Bestia && sottotipo != CreatureSubtype.Demone
-				&& sottotipo != CreatureSubtype.Divino && sottotipo != CreatureSubtype.Umano
-				&& sottotipo != CreatureSubtype.Nessuno) {
+		if (subtype != CreatureSubtype.BEAST && subtype != CreatureSubtype.DEMON && subtype != CreatureSubtype.GOD
+				&& subtype != CreatureSubtype.HUMAN && subtype != CreatureSubtype.NONE) {
 			throw new InvalidCardDataException(id, "subtype");
 		} else {
-			this.sottotipo = sottotipo;
+			this.subtype = subtype;
 		}
 
 		if (atk < 0) {

@@ -21,15 +21,38 @@ public class AuthenticationController {
 	}
 
 	public void handleRegister(ClientHandler clientHandler, Message msg) {
+		int clientId = clientHandler.getClientId();
+		logger.info("Client #{} : ricevuta richiesta di registrazione.", clientId);
+
+		if (msg == null || msg.getData() == null) {
+			logger.warn("Client #{}: richiesta registrazione rifiutata (messaggio o payload nullo).", clientId);
+			DBResult<Void> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
+			return;
+		}
+
+		if (!(msg.getData() instanceof AuthenticationData)) {
+			logger.warn("Client #{}: richiesta registrazione rifiutata (payload non di tipo AuthenticationData).",
+					clientId);
+			DBResult<Void> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
+			return;
+		}
+
 		AuthenticationData userData = (AuthenticationData) msg.getData();
 		String nickname = userData.getNickname();
 		String password = userData.getPassword();
 
-		int clientId = clientHandler.getClientId();
+		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
+			logger.warn("Client #{}: richiesta registrazione rifiutata (credenziali nulle o vuote).", clientId);
+			DBResult<Void> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
+			return;
+		}
+
 		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
 
 		DBResult<Void> result = Server.getInstance().getDbManager().registerUser(nickname, password);
-
 		clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 
 		DBStatus status = result.getStatus();
@@ -37,15 +60,35 @@ public class AuthenticationController {
 	}
 
 	public void handleLogin(ClientHandler clientHandler, Message msg) {
+		int clientId = clientHandler.getClientId();
+		logger.info("Client #{} : ricevuta richiesta di login.", clientId);
+
+		if (msg == null || msg.getData() == null) {
+			logger.warn("Client #{}: richiesta login rifiutata (messaggio o payload nullo).", clientId);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
+			return;
+		}
+
+		if (!(msg.getData() instanceof AuthenticationData)) {
+			logger.warn("Client #{}: richiesta login rifiutata (payload non di tipo AuthenticationData).", clientId);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
+			return;
+		}
+
 		AuthenticationData userData = (AuthenticationData) msg.getData();
 		String nickname = userData.getNickname();
 		String password = userData.getPassword();
 
-		int clientId = clientHandler.getClientId();
-		logger.info("Client #{} : ricevuta richiesta di login (nickname '{}')", clientId, nickname);
+		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
+			logger.warn("Client #{}: richiesta login rifiutata (credenziali nulle o vuote).", clientId);
+			DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
+			return;
+		}
 
 		Server server = Server.getInstance();
-
 		if (server.isUserAuthenticated(nickname)) {
 			logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
 			DBResult<Player> result = new DBResult<>(DBStatus.ALREADY_LOGGED_IN, null);

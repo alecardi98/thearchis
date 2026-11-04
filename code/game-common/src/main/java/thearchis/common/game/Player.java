@@ -38,4 +38,8 @@ public class Player implements Serializable {
 	public void setCollection(Collection collection) {
 		this.collection = collection;
 	}
+	
+	public int getDust() {
+		return dust;
+	}
 }

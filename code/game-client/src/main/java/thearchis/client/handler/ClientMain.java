@@ -1,8 +1,12 @@
 package thearchis.client.handler;
 
+import thearchis.common.card.MasterSet;
+
 public class ClientMain {
 
 	public static void main(String[] args) throws InterruptedException {
+		MasterSet.getInstance();
+		
 		Client client = new Client();
 		client.startClient();
 
@@ -26,6 +30,11 @@ public class ClientMain {
 
 		client.sendRegisterRequest("alecardi98", "12345"); // registrazione fuori stato
 		Thread.sleep(500);
+		
+		client.sendDisenchantRequest(1);
+		Thread.sleep(500);
+		
+
 
 		client.serverDisconnection();
 	}

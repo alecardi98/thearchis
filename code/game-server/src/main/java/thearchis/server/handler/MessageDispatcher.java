@@ -53,7 +53,9 @@ public class MessageDispatcher {
 		switch (type) {
 		case REGISTER_REQUEST -> authenticationController.handleRegister(clientHandler, msg);
 		case LOGIN_REQUEST -> authenticationController.handleLogin(clientHandler, msg);
-		case COLLECTION_REQUEST -> collectionController.handleCollectionRequest(clientHandler, msg);
+		case COLLECTION_REQUEST -> collectionController.handleCollectionRequest(clientHandler);
+		case CRAFT_REQUEST -> collectionController.handleCraftRequest(clientHandler, msg);
+		case DISENCHANT_REQUEST -> collectionController.handleDisenchantRequest(clientHandler, msg);
 
 		default -> logger.error("Client #{} : tipo di messaggio sconosciuto ({}).", clientId, type);
 		}
@@ -67,6 +69,7 @@ public class MessageDispatcher {
 		return switch (state) {
 		case NOT_AUTHENTICATED -> type == MessageType.REGISTER_REQUEST || type == MessageType.LOGIN_REQUEST;
 		case MAIN_MENU -> type == MessageType.COLLECTION_REQUEST;
+		case IN_COLLECTION -> type == MessageType.CRAFT_REQUEST || type == MessageType.DISENCHANT_REQUEST;
 
 		default -> false;
 		};
@@ -77,6 +80,9 @@ public class MessageDispatcher {
 		case REGISTER_REQUEST -> MessageType.REGISTER_RESPONSE;
 		case LOGIN_REQUEST -> MessageType.LOGIN_RESPONSE;
 		case COLLECTION_REQUEST -> MessageType.COLLECTION_RESPONSE;
+		case CRAFT_REQUEST -> MessageType.CRAFT_RESPONSE;
+		case DISENCHANT_REQUEST -> MessageType.DISENCHANT_RESPONSE;
+		
 		default -> MessageType.ERROR_RESPONSE;
 		};
 

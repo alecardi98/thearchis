@@ -9,6 +9,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
+import com.mongodb.client.model.Updates;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import thearchis.common.collection.Collection;
@@ -37,35 +38,71 @@ public class DBManager {
 	}
 
 	public synchronized void connect() {
-		if (mongoClient == null) {
+	    if (mongoClient == null) {
+	        
+	        Dotenv dotenv = Dotenv.configure()
+	                .ignoreIfMalformed()
+	                .ignoreIfMissing()
+	                .load();
 
-			Dotenv dotenv = Dotenv.load();
-			String CONNECTION_URI = dotenv.get("CONNECTION_URI");
+	        String rawUri = dotenv.get("CONNECTION_URI");
+	        if (rawUri == null || rawUri.isBlank()) {
+	            rawUri = System.getenv("CONNECTION_URI");
+	        }
 
-			if (CONNECTION_URI == null || CONNECTION_URI.isBlank()) {
-				logger.fatal("Impossibile avviare il DB: MONGO_CONNECTION_URI non trovata nel file .env .");
-				throw new RuntimeException("Configurazione MongoDB mancante.");
-			}
+	        logger.info("URI Caricato dal file .env/ambiente.");
 
-			try {
-				mongoClient = MongoClients.create(CONNECTION_URI);
-				database = mongoClient.getDatabase(DB_NAME);
+	        if (rawUri == null || rawUri.isBlank()) {
+	            logger.fatal("Impossibile avviare il DB: CONNECTION_URI non trovata nel file .env o nelle variabili di sistema.");
+	            throw new RuntimeException("Configurazione MongoDB mancante.");
+	        }
 
-				// ping per verificare la connessione
-				database.runCommand(new BsonDocument("ping", new BsonInt32(1)));
+	        String connectionUri = sanitizeSrvUri(rawUri);
 
-				MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
-				users.createIndex(Indexes.ascending("nickname"), new IndexOptions().unique(true));
+	        try {
+	            mongoClient = MongoClients.create(connectionUri);
+	            database = mongoClient.getDatabase(DB_NAME);
 
-				logger.info("Connessione a MongoDB ({}) verificata e creata con successo.", DB_NAME);
+	            database.runCommand(new BsonDocument("ping", new BsonInt32(1)));
 
-			} catch (Exception e) {
-				logger.fatal("Impossibile connettersi a MongoDB Atlas: {}", e.getMessage());
-				close();
-				throw new RuntimeException("Errore critico di connessione al Database.", e);
-			}
+	            MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
+	            users.createIndex(Indexes.ascending("nickname"), new IndexOptions().unique(true));
 
-		}
+	            logger.info("Connessione a MongoDB ({}) verificata e creata con successo.", DB_NAME);
+
+	        } catch (Exception e) {
+	            logger.fatal("Impossibile connettersi a MongoDB Atlas: {}", e.getMessage());
+	            close();
+	            throw new RuntimeException("Errore critico di connessione al Database.", e);
+	        }
+	    }
+	}
+
+	private String sanitizeSrvUri(String uri) {
+	    if (!uri.contains("mongodb+srv://")) {
+	        return uri;
+	    }
+
+	    logger.info("Rilevato formato SRV: conversione dinamica ai nodi diretti dello shard.");
+
+	    int schemeEnd = uri.indexOf("://") + 3;
+	    String afterScheme = uri.substring(schemeEnd);
+	    int atIndex = afterScheme.indexOf("@");
+
+	    if (atIndex == -1) {
+	        return uri;
+	    }
+
+	    String credentials = afterScheme.substring(0, atIndex);
+
+	    return String.format(
+	        "mongodb://%s@ac-1ss9wkl-shard-00-00.jp638fv.mongodb.net:27017," +
+	        "ac-1ss9wkl-shard-00-01.jp638fv.mongodb.net:27017," +
+	        "ac-1ss9wkl-shard-00-02.jp638fv.mongodb.net:27017/" +
+	        "%s?ssl=true&replicaSet=atlas-wejixd-shard-0&authSource=admin&retryWrites=true&w=majority",
+	        credentials,
+	        DB_NAME
+	    );
 	}
 
 	public void close() {
@@ -201,6 +238,45 @@ public class DBManager {
 			}
 		}
 		return collection;
+	}
+
+	public DBResult<Player> craftCard(String nickname, int cardId, int craftCost) {
+		try {
+			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
+			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
+
+			if (userDoc == null) {
+				logger.warn("Craft fallito: utente '{}' non trovato nel DB.", nickname);
+				DBResult<Player> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+				return result;
+			}
+
+			int currentDust = userDoc.getInteger("dust", 0);
+			if (currentDust < craftCost) {
+				logger.warn("Craft fallito per '{}': polvere insufficiente (richiesta: {}, posseduta: {}).", nickname,
+						craftCost, currentDust);
+				DBResult<Player> result = new DBResult<>(DBStatus.NOT_ENOUGH_DUST, null);
+				return result;
+			}
+
+			String fieldPath = "collection." + cardId;
+			users.updateOne(Filters.eq("nickname", nickname),
+					Updates.combine(Updates.inc("dust", -craftCost), Updates.inc(fieldPath, 1)));
+
+			Document updatedUserDoc = users.find(Filters.eq("nickname", nickname)).first();
+			Player updatedPlayer = parsePlayerFromDocument(updatedUserDoc);
+
+			logger.info("Carta #{} craftata con successo da '{}'. Nuova polvere: {}.", cardId, nickname,
+					updatedPlayer.getDust());
+			DBResult<Player> result = new DBResult<>(DBStatus.CRAFT_OK, updatedPlayer);
+			return result;
+
+		} catch (MongoException e) {
+			logger.error("Errore MongoDB durante il craft della carta #{} per '{}': {}", cardId, nickname,
+					e.getMessage());
+			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			return result;
+		}
 	}
 
 }

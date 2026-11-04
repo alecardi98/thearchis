@@ -70,6 +70,11 @@ public class ServerListener implements Runnable {
 			DBResult<Collection> result = (DBResult<Collection>) msg.getData();
 			handleCollectionResponse(result);
 		}
+		case CRAFT_RESPONSE -> {
+			DBResult<Player> result = (DBResult<Player>) msg.getData();
+			handleCraftResponse(result);
+
+		}
 		default -> logger.error("Tipo di messaggio non gestito: {}", msg.getType());
 		}
 	}
@@ -122,4 +127,22 @@ public class ServerListener implements Runnable {
 		default -> System.out.println("[GUI] Collezione: risposta sconosciuta.");
 		}
 	}
+
+	private void handleCraftResponse(DBResult<Player> result) {
+		DBStatus status = result.getStatus();
+		Player player = result.getData();
+		logger.info("Esito craft: {}.", status);
+
+		switch (status) {
+		case CRAFT_OK -> {
+			System.out.println("[GUI] Craft: carta creata con successo.");
+			client.setPlayer(player);
+		}
+		case NOT_ENOUGH_DUST -> System.out.println("[GUI] Craft: polvere insufficiente.");
+		case BAD_REQUEST -> System.out.println("[GUI] Craft: azione non consentita o carta vincolata.");
+		case DB_ERROR -> System.out.println("[GUI] Craft: errore del server/database.");
+		default -> System.out.println("[GUI] Craft: risposta sconosciuta.");
+		}
+	}
+
 }
