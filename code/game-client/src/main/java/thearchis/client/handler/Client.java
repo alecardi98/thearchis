@@ -9,10 +9,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.game.ClientState;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
-import thearchis.common.message.UserData;
+import thearchis.common.game.Player;
+import thearchis.common.message.AuthenticationData;
+import thearchis.common.message.CollectionData;
 
 public class Client {
 	private static final Logger logger = LogManager.getLogger(Client.class);
@@ -22,8 +23,7 @@ public class Client {
 	private ServerListener serverListener;
 	private final AtomicBoolean isDisconnecting = new AtomicBoolean(false);
 
-	private String pendingNickname;
-	private String nickname;
+	private Player player;
 
 	private static final String HOST = "localhost";
 //	private static final String HOST = "204.216.208.188";
@@ -102,42 +102,43 @@ public class Client {
 	}
 
 	public synchronized void sendRegisterRequest(String nickname, String password) {
-		Message msg = new Message(MessageType.REGISTER_REQUEST, new UserData(nickname, password));
+		AuthenticationData authenticationData = new AuthenticationData(nickname, password);
+		Message msg = new Message(MessageType.REGISTER_REQUEST, authenticationData);
 		sendMessage(msg);
 	}
 
 	public synchronized void sendLoginRequest(String nickname, String password) {
-		pendingNickname = nickname;
-		Message msg = new Message(MessageType.LOGIN_REQUEST, new UserData(nickname, password));
+		AuthenticationData authenticationData = new AuthenticationData(nickname, password);
+		Message msg = new Message(MessageType.LOGIN_REQUEST, authenticationData);
 		sendMessage(msg);
 	}
 
-	public synchronized void confirmLogin() {
-		if (pendingNickname != null) {
-			nickname = pendingNickname;
-			pendingNickname = null;
-			logger.info("Sessione salvata con successo per '{}'.", nickname);
-		}
+	public synchronized void sendCollectionRequest() {
+		CollectionData collectionData = new CollectionData();
+		Message msg = new Message(MessageType.COLLECTION_REQUEST, collectionData);
+		sendMessage(msg);
 	}
 
-	public synchronized void clearPendingLogin() {
-		pendingNickname = null;
+	public synchronized void sendCraftRequest(int cardId) {
+		CollectionData collectionData = new CollectionData(cardId);
+		Message msg = new Message(MessageType.CRAFT_REQUEST, collectionData);
+		sendMessage(msg);
 	}
-	
-	public synchronized void sendCollectionRequest() {
-		Message msg = new Message(MessageType.COLLECTION_REQUEST, nickname);
+
+	public synchronized void sendDisenchantRequest(int cardId) {
+		CollectionData collectionData = new CollectionData(cardId);
+		Message msg = new Message(MessageType.DISENCHANT_REQUEST, collectionData);
 		sendMessage(msg);
 	}
 
 	/*
 	 * Getter & Setter
 	 */
-
-	public String getPendingNickname() {
-		return pendingNickname;
+	public void setPlayer(Player player) {
+		this.player = player;
 	}
 
-	public void setNickname(String nickname) {
-		this.nickname = nickname;
+	public Player getPlayer() {
+		return this.player;
 	}
 }

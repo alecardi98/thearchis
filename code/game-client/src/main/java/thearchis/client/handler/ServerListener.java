@@ -6,7 +6,10 @@ import java.io.ObjectInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import thearchis.common.collection.Collection;
+import thearchis.common.db.DBResult;
 import thearchis.common.db.DBStatus;
+import thearchis.common.game.Player;
 import thearchis.common.message.Message;
 
 public class ServerListener implements Runnable {
@@ -51,15 +54,21 @@ public class ServerListener implements Runnable {
 		this.running = false;
 	}
 
+	@SuppressWarnings("unchecked")
 	private void processMessage(Message msg) {
 		switch (msg.getType()) {
 		case REGISTER_RESPONSE -> {
-			DBStatus status = (DBStatus) msg.getData();
+			DBResult<Void> result = (DBResult<Void>) msg.getData();
+			DBStatus status = result.getStatus();
 			handleRegisterResponse(status);
 		}
 		case LOGIN_RESPONSE -> {
-			DBStatus status = (DBStatus) msg.getData();
-			handleLoginResponse(status);
+			DBResult<Player> result = (DBResult<Player>) msg.getData();
+			handleLoginResponse(result);
+		}
+		case COLLECTION_RESPONSE -> {
+			DBResult<Collection> result = (DBResult<Collection>) msg.getData();
+			handleCollectionResponse(result);
 		}
 		default -> logger.error("Tipo di messaggio non gestito: {}", msg.getType());
 		}
@@ -77,34 +86,40 @@ public class ServerListener implements Runnable {
 		}
 	}
 
-	private void handleLoginResponse(DBStatus status) {
-		logger.info("Esito login: {}", status);
+	private void handleLoginResponse(DBResult<Player> result) {
+		DBStatus status = result.getStatus();
+		Player player = result.getData();
+		logger.info("Esito login: {}.", status);
 
 		switch (status) {
 		case LOGIN_OK -> {
 			System.out.println("[GUI] Login: login riuscito.");
-			client.confirmLogin();
+			client.setPlayer(player);
 		}
-		case INVALID_CREDENTIALS -> {
-			System.out.println("[GUI] Login: credenziali errate.");
-			client.clearPendingLogin();
+		case INVALID_CREDENTIALS -> System.out.println("[GUI] Login: credenziali errate.");
+		case ALREADY_LOGGED_IN -> System.out.println("[GUI] Login: utente già loggato.");
+		case BAD_REQUEST -> System.out.println("[GUI] Login: azione non consentita nello stato attuale.");
+		case DB_ERROR -> System.out.println("[GUI] Login: errore del server/database.");
+		default -> System.out.println("[GUI] Login: risposta sconosciuta.");
+
 		}
-		case ALREADY_LOGGED_IN -> {
-			System.out.println("[GUI] Login: utente già loggato.");
-			client.clearPendingLogin();
+	}
+
+	private void handleCollectionResponse(DBResult<Collection> result) {
+		DBStatus status = result.getStatus();
+		Collection collection = result.getData();
+		logger.info("Esito collezione: {}.", status);
+
+		switch (status) {
+		case COLLECTION_OK -> {
+			System.out.println("[GUI] Collezione: collezione caricata con successo.");
+			if (client.getPlayer() != null) {
+				client.getPlayer().setCollection(collection);
+			}
 		}
-		case BAD_REQUEST -> {
-			System.out.println("[GUI] Login: azione non consentita nello stato attuale.");
-			client.clearPendingLogin();
-		}
-		case DB_ERROR -> {
-			System.out.println("[GUI] Login: errore del server/database.");
-			client.clearPendingLogin();
-		}
-		default -> {
-			System.out.println("[GUI] Login: risposta sconosciuta.");
-			client.clearPendingLogin();
-		}
+		case BAD_REQUEST -> System.out.println("[GUI] Collezione: azione non consentita nello stato attuale.");
+		case DB_ERROR -> System.out.println("[GUI] Collezione: errore del server/database.");
+		default -> System.out.println("[GUI] Collezione: risposta sconosciuta.");
 		}
 	}
 }

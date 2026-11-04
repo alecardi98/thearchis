@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import thearchis.common.game.ClientState;
+import thearchis.common.game.Player;
 import thearchis.common.message.Message;
 
 public class ClientHandler implements Runnable {
@@ -21,7 +22,7 @@ public class ClientHandler implements Runnable {
 
 	private final int clientId;
 	private ClientState clientState;
-	private String nickname;
+	private Player player;
 
 	public ClientHandler(Socket socket, int clientId) {
 		this.socket = socket;
@@ -29,9 +30,6 @@ public class ClientHandler implements Runnable {
 		clientState = ClientState.NOT_AUTHENTICATED;
 	}
 
-	/*
-	 * Creazione flusso in e out
-	 */
 	public void init() throws IOException {
 		out = new ObjectOutputStream(socket.getOutputStream());
 		out.flush();
@@ -93,12 +91,12 @@ public class ClientHandler implements Runnable {
 		return clientId;
 	}
 
-	public void setNickname(String nickname) {
-		this.nickname = nickname;
+	public Player getPlayer() {
+		return player;
 	}
 
-	public String getNickname() {
-		return nickname;
+	public void setPlayer(Player player) {
+		this.player = player;
 	}
 
 	public ClientState getClientState() {

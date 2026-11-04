@@ -2,12 +2,12 @@ package thearchis.common.message;
 
 import java.io.Serializable;
 
-public class UserData implements Serializable{
+public class AuthenticationData implements Serializable{
 
 	private String nickname;
 	private String password;
 
-	public UserData(String nickname, String password) {
+	public AuthenticationData(String nickname, String password) {
 		this.nickname = nickname;
 		this.password = password;
 	}

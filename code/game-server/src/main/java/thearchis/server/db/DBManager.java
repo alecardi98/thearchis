@@ -11,7 +11,12 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import thearchis.common.collection.Collection;
+import thearchis.common.db.DBResult;
 import thearchis.common.db.DBStatus;
+import thearchis.common.game.Player;
+
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,9 +36,6 @@ public class DBManager {
 	public DBManager() {
 	}
 
-	/*
-	 * Crea mongoClient e database
-	 */
 	public synchronized void connect() {
 		if (mongoClient == null) {
 
@@ -73,48 +75,132 @@ public class DBManager {
 		}
 	}
 
-	public DBStatus registerUser(String nickname, String password) {
+	public DBResult<Void> registerUser(String nickname, String password) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 
-			// Tentativo di inserimento atomico del nuovo account
-			Document newUser = new Document().append("nickname", nickname).append("password", password);
+			Document newUser = new Document().append("nickname", nickname).append("password", password)
+					.append("coins", 100).append("dust", 0).append("wins", 0).append("losses", 0)
+					.append("collection", new Document()).append("decks", new java.util.ArrayList<>());
+
+			// TODO aggiungere le carte di base che hanno tutti
+
 			users.insertOne(newUser);
 
-			logger.info("Nuovo account registrato: '{}'.", nickname);
-			return DBStatus.REGISTER_OK;
+			logger.info("Nuovo account e profilo inizializzati con successo per: '{}'.", nickname);
+
+			DBResult<Void> result = new DBResult<>(DBStatus.REGISTER_OK, null);
+			return result;
 
 		} catch (MongoWriteException e) {
 			if (e.getError().getCode() == 11000) { // Codice 11000 DuplicateKeyError (nickname già esistente)
 				logger.warn("Registrazione fallita: il nickname '{}' è già in uso.", nickname);
-				return DBStatus.NICKNAME_ALREADY_EXISTS;
+				DBResult<Void> result = new DBResult<>(DBStatus.NICKNAME_ALREADY_EXISTS, null);
+				return result;
 			}
 			logger.error("Errore di scrittura MongoDB per '{}': {}", nickname, e.getMessage());
-			return DBStatus.DB_ERROR;
+			DBResult<Void> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante la registrazione di '{}': {}", nickname, e.getMessage());
-			return DBStatus.DB_ERROR;
+			DBResult<Void> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			return result;
 		}
 	}
 
-	public DBStatus loginUser(String nickname, String password) {
+	public DBResult<Player> loginUser(String nickname, String password) {
 		try {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null || !password.equals(userDoc.getString("password"))) {
 				logger.warn("Login fallito per '{}' (credenziali errate).", nickname);
-				return DBStatus.INVALID_CREDENTIALS;
+				DBResult<Player> result = new DBResult<>(DBStatus.INVALID_CREDENTIALS, null);
+				return result;
 			}
 
 			logger.info("Login eseguito con successo per '{}'.", nickname);
-			return DBStatus.LOGIN_OK;
+
+			Player player = parsePlayerFromDocument(userDoc);
+			DBResult<Player> result = new DBResult<>(DBStatus.LOGIN_OK, player);
+			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante il login di '{}' ({}).", nickname, e.getMessage());
-			return DBStatus.DB_ERROR;
+			DBResult<Player> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			return result;
 		}
+	}
+
+	private Player parsePlayerFromDocument(Document userDoc) {
+		if (userDoc == null) {
+			return null;
+		}
+
+		String nickname = userDoc.getString("nickname");
+		int coins = userDoc.getInteger("coins", 0);
+		int dust = userDoc.getInteger("dust", 0);
+		int wins = userDoc.getInteger("wins", 0);
+		int losses = userDoc.getInteger("losses", 0);
+
+		Document collectionDoc = userDoc.get("collection", Document.class);
+		Collection collection = parseCollectionFromDocument(collectionDoc);
+
+		// TODO implementare il recupero dei Deck
+
+		Player player = new Player(nickname, coins, dust, collection, wins, losses);
+		return player;
+	}
+
+	public DBResult<Collection> getUserCollection(String nickname) {
+		try {
+			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
+			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
+
+			if (userDoc == null) {
+				logger.warn("Recupero collezione fallito: utente '{}' non trovato.", nickname);
+				DBResult<Collection> result = new DBResult<>(DBStatus.DB_ERROR, null);
+				return result;
+			}
+
+			Document collectionDoc = userDoc.get("collection", Document.class);
+			Collection collection = parseCollectionFromDocument(collectionDoc);
+
+			logger.info("Collezione recuperata con successo per l'utente '{}'.", nickname);
+			DBResult<Collection> result = new DBResult<>(DBStatus.COLLECTION_OK, collection);
+			return result;
+
+		} catch (MongoException e) {
+			logger.error("Errore MongoDB durante il recupero della collezione per '{}' ({})", nickname, e.getMessage());
+			DBResult<Collection> result = new DBResult<>(DBStatus.DB_ERROR, null);
+			return result;
+		}
+	}
+
+	private Collection parseCollectionFromDocument(Document collectionDoc) {
+		Collection collection = new Collection();
+
+		if (collectionDoc == null) {
+			return collection;
+		}
+
+		for (Map.Entry<String, Object> entry : collectionDoc.entrySet()) {
+			try {
+				int cardId = Integer.parseInt(entry.getKey());
+				int quantity = collectionDoc.getInteger(entry.getKey(), 0);
+
+				for (int i = 0; i < quantity; i++) {
+					collection.addCard(cardId);
+				}
+
+			} catch (NumberFormatException e) {
+				logger.warn("ID carta non valido nella collezione: '{}'", entry.getKey());
+			} catch (ClassCastException e) {
+				logger.warn("Valore quantità non valido per la carta '{}'", entry.getKey());
+			}
+		}
+		return collection;
 	}
 
 }

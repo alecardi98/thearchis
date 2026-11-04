@@ -7,18 +7,26 @@ public class ClientMain {
 		client.startClient();
 
 		client.sendRegisterRequest("alecardi98", "12345"); // registrazione errata
-		Thread.sleep(3000);
+		Thread.sleep(500);
 
 		client.sendLoginRequest("alecardi98", "122222"); // login errato
-		Thread.sleep(3000);
+		Thread.sleep(500);
 
 		client.sendLoginRequest("alecardi98", "12345"); // login
-		Thread.sleep(3000);
+		Thread.sleep(500);
 
 		client.sendLoginRequest("alecardi98", "12345"); // tentativo doppio login
-		Thread.sleep(3000);
-		
-		
+		Thread.sleep(500);
+
+		client.sendCollectionRequest(); // collezione
+		Thread.sleep(500);
+
+		client.sendLoginRequest("alecardi98", "12345"); // login fuori stato
+		Thread.sleep(500);
+
+		client.sendRegisterRequest("alecardi98", "12345"); // registrazione fuori stato
+		Thread.sleep(500);
+
 		client.serverDisconnection();
 	}
 

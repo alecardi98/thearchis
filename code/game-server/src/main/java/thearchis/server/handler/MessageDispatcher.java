@@ -3,6 +3,7 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import thearchis.common.db.DBResult;
 import thearchis.common.db.DBStatus;
 import thearchis.common.game.ClientState;
 import thearchis.common.message.Message;
@@ -52,6 +53,8 @@ public class MessageDispatcher {
 		switch (type) {
 		case REGISTER_REQUEST -> authenticationController.handleRegister(clientHandler, msg);
 		case LOGIN_REQUEST -> authenticationController.handleLogin(clientHandler, msg);
+		case COLLECTION_REQUEST -> collectionController.handleCollectionRequest(clientHandler, msg);
+
 		default -> logger.error("Client #{} : tipo di messaggio sconosciuto ({}).", clientId, type);
 		}
 	}
@@ -63,6 +66,8 @@ public class MessageDispatcher {
 	private boolean isAllowedInState(MessageType type, ClientState state) {
 		return switch (state) {
 		case NOT_AUTHENTICATED -> type == MessageType.REGISTER_REQUEST || type == MessageType.LOGIN_REQUEST;
+		case MAIN_MENU -> type == MessageType.COLLECTION_REQUEST;
+
 		default -> false;
 		};
 	}
@@ -71,10 +76,12 @@ public class MessageDispatcher {
 		MessageType responseType = switch (type) {
 		case REGISTER_REQUEST -> MessageType.REGISTER_RESPONSE;
 		case LOGIN_REQUEST -> MessageType.LOGIN_RESPONSE;
+		case COLLECTION_REQUEST -> MessageType.COLLECTION_RESPONSE;
 		default -> MessageType.ERROR_RESPONSE;
 		};
 
-		clientHandler.sendMessage(new Message(responseType, DBStatus.BAD_REQUEST));
+		DBResult<?> result = new DBResult<>(DBStatus.BAD_REQUEST, null);
+		clientHandler.sendMessage(new Message(responseType, result));
 	}
 
 }
