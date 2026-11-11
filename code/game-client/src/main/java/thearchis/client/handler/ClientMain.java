@@ -11,33 +11,7 @@ public class ClientMain {
 		Client client = new Client();
 		client.startClient();
 
-		client.sendRegisterRequest("alecardi98", "12345"); // registrazione già esistente
-		Thread.sleep(500);
-		client.sendBackNavigationRequest(ClientState.MAIN_MENU); // navigazione errata NOT_AUTHENTICATED -> MAIN_MENU
-		Thread.sleep(500);
-		client.sendLoginRequest("alecardi98", "122222"); // login errato
-		Thread.sleep(500);
-		client.sendLoginRequest("alecardi98", "12345"); // login
-		Thread.sleep(500);
-		client.sendLoginRequest("alecardi98", "12345"); // tentativo doppio login
-		Thread.sleep(500);
-		client.sendBackNavigationRequest(ClientState.MAIN_MENU); // navigazione errata MAIN_MENU -> MAIN_MENU
-		Thread.sleep(500);
-		client.sendCollectionRequest(); // accesso collezione
-		Thread.sleep(500);
-		client.sendLoginRequest("alecardi98", "12345"); // login fuori stato
-		Thread.sleep(500);
-		client.sendRegisterRequest("alecardi98", "12345"); // registrazione fuori stato
-		Thread.sleep(500);
-		client.sendBackNavigationRequest(ClientState.MAIN_MENU); // navigazione corretta IN_COLLECTION -> MAIN_MENU
-		Thread.sleep(500);
-		client.sendBackNavigationRequest(ClientState.MAIN_MENU); // navigazione errata MAIN_MENU -> MAIN_MENU
-		Thread.sleep(500);
-		client.sendCollectionRequest(); // accesso collezione
-		Thread.sleep(500);
-		client.sendCollectionRequest(); // accesso errato collezione
-		Thread.sleep(500);
-
+		Thread.sleep(10000);
 		client.serverDisconnection();
 
 	}

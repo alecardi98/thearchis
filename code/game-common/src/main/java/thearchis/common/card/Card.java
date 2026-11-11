@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 import thearchis.common.hero.HeroName;
 
-public class Card implements Serializable {
+public abstract class Card implements Serializable {
 
 	private final int id;
 	private final String name;
@@ -15,14 +15,20 @@ public class Card implements Serializable {
 	private final String description;
 	private final boolean constrained;
 
-	public Card(int id, String name, int cost, CardType type, CardRarity rarity, HeroName hero, String description, boolean constrained) {
-		this.id = id;
+	public Card(int id, String name, int manaCost, CardType type, CardRarity rarity, HeroName hero, String description,
+			Boolean constrained) {
+		if (id <= 0) {
+			throw new InvalidCardDataException(id, "id");
+		} else {
+			this.id = id;
+		}
+		
 		this.name = name;
 
-		if (cost < 0 || cost > 10) {
+		if (manaCost < 0 || manaCost > 10) {
 			throw new InvalidCardDataException(id, "cost");
 		} else {
-			this.manaCost = cost;
+			this.manaCost = manaCost;
 		}
 
 		if (type != CardType.CREATURE && type != CardType.SPELL) {
@@ -38,9 +44,20 @@ public class Card implements Serializable {
 			this.rarity = rarity;
 		}
 
-		this.hero = hero;
+		if (hero != HeroName.AETHELGARD && hero != HeroName.BRAKKAR && hero != HeroName.LYRA && hero != HeroName.MALAKOR
+				&& hero != HeroName.NONE) {
+			throw new InvalidCardDataException(id, "hero");
+		} else {
+			this.hero = hero;
+		}
+		
 		this.description = description;
-		this.constrained = constrained;
+		
+		if (constrained == null) {
+			throw new InvalidCardDataException(id, "constrained");
+		} else {
+			this.constrained = constrained;
+		}
 	}
 
 	/*
@@ -57,7 +74,7 @@ public class Card implements Serializable {
 	public int getId() {
 		return id;
 	}
-	
+
 	public boolean isConstrained() {
 		return constrained;
 	}

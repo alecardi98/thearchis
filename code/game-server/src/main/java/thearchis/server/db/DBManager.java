@@ -15,10 +15,12 @@ import io.github.cdimascio.dotenv.Dotenv;
 import thearchis.common.card.Card;
 import thearchis.common.card.MasterSet;
 import thearchis.common.game.Collection;
+import thearchis.common.game.Deck;
 import thearchis.common.game.Player;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
@@ -122,8 +124,6 @@ public class DBManager {
 				}
 			}
 
-			// TODO aggiungere mazzi vuoti
-
 			Document newUser = new Document().append("nickname", nickname).append("password", password)
 					.append("coins", 100).append("dust", 0).append("wins", 0).append("losses", 0)
 					.append("collection", initialCollection).append("decks", new java.util.ArrayList<>());
@@ -133,19 +133,23 @@ public class DBManager {
 			logger.info("Nuovo account e profilo inizializzati con successo per: '{}' con {} carte base.", nickname,
 					initialCollection.size());
 
-			return new OperationResult<>(OperationStatus.REGISTER_OK, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.REGISTER_OK, null);
+			return result;
 
 		} catch (MongoWriteException e) {
 			if (e.getError().getCode() == 11000) { // DuplicateKeyError
 				logger.warn("Registrazione fallita: il nickname '{}' è già in uso.", nickname);
-				return new OperationResult<>(OperationStatus.NICKNAME_ALREADY_EXISTS, null);
+				OperationResult<Void> result = new OperationResult<>(OperationStatus.NICKNAME_ALREADY_EXISTS, null);
+				return result;
 			}
 			logger.error("Errore di scrittura MongoDB per '{}': {}", nickname, e.getMessage());
-			return new OperationResult<>(OperationStatus.DB_ERROR, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+			return result;
 
 		} catch (MongoException e) {
 			logger.error("Errore MongoDB durante la registrazione di '{}': {}", nickname, e.getMessage());
-			return new OperationResult<>(OperationStatus.DB_ERROR, null);
+			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+			return result;
 		}
 	}
 
@@ -187,10 +191,62 @@ public class DBManager {
 		Document collectionDoc = userDoc.get("collection", Document.class);
 		Collection collection = parseCollectionFromDocument(collectionDoc);
 
-		// TODO implementare il recupero dei Deck
+		List<Document> decksDocList = userDoc.getList("decks", Document.class);
+		List<Deck> decks = parseDecksFromDocumentList(decksDocList);
 
-		Player player = new Player(nickname, coins, dust, collection, wins, losses);
+		Player player = new Player(nickname, coins, dust, collection, decks, wins, losses);
 		return player;
+	}
+
+	private List<Deck> parseDecksFromDocumentList(List<Document> decksDocList) {
+		List<Deck> decks = new java.util.ArrayList<>();
+
+		if (decksDocList == null || decksDocList.isEmpty()) {
+			return decks;
+		}
+
+		for (Document deckDoc : decksDocList) {
+			if (deckDoc == null) {
+				continue;
+			}
+
+			try {
+				String heroStr = deckDoc.getString("hero");
+				if (heroStr == null || heroStr.isBlank()) {
+					logger.warn("Mazzo scartato: HeroName non specificato nel documento.");
+					continue;
+				}
+
+				thearchis.common.hero.HeroName hero = thearchis.common.hero.HeroName.valueOf(heroStr);
+				Deck deck = new Deck(hero);
+
+				Document cardsDoc = deckDoc.get("cards", Document.class);
+				if (cardsDoc != null) {
+					for (Map.Entry<String, Object> entry : cardsDoc.entrySet()) {
+						try {
+							int cardId = Integer.parseInt(entry.getKey());
+							int quantity = cardsDoc.getInteger(entry.getKey(), 0);
+
+							if (quantity > 0) {
+								deck.addCard(cardId, quantity);
+							}
+						} catch (NumberFormatException e) {
+							logger.warn("ID carta non valido nel mazzo: '{}'", entry.getKey());
+						} catch (ClassCastException e) {
+							logger.warn("Quantità carta non valida nel mazzo per ID '{}'", entry.getKey());
+						}
+					}
+				}
+				decks.add(deck);
+
+			} catch (IllegalArgumentException e) {
+				logger.warn("HeroName non valido durante il parsing del mazzo: '{}'", deckDoc.getString("hero"));
+			} catch (Exception e) {
+				logger.error("Errore imprevisto durante il parsing di un mazzo: {}", e.getMessage());
+			}
+		}
+
+		return decks;
 	}
 
 	public OperationResult<Collection> getUserCollection(String nickname) {
@@ -296,15 +352,11 @@ public class DBManager {
 			Document collectionDoc = userDoc.get("collection", Document.class);
 			String cardIdKey = String.valueOf(cardId);
 
-			if (collectionDoc == null || !collectionDoc.containsKey(cardIdKey)) {
-				logger.warn("Disenchant fallito per '{}': carta #{} non posseduta.", nickname, cardId);
-				OperationResult<Player> result = new OperationResult<>(OperationStatus.CARD_NOT_OWNED, null);
-				return result;
-			}
+			int currentQuantity = (collectionDoc != null) ? collectionDoc.getInteger(cardIdKey, 0) : 0;
 
-			int currentQuantity = collectionDoc.getInteger(cardIdKey, 0);
 			if (currentQuantity <= 0) {
-				logger.warn("Disenchant fallito per '{}': quantità insufficiente per la carta #{}.", nickname, cardId);
+				logger.warn("Disenchant fallito per '{}': carta #{} non posseduta o quantità insufficiente.", nickname,
+						cardId);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.CARD_NOT_OWNED, null);
 				return result;
 			}
@@ -335,5 +387,4 @@ public class DBManager {
 			return result;
 		}
 	}
-
 }

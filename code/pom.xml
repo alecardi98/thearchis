@@ -14,6 +14,7 @@
 		<module>game-client</module>
 		<module>game-server</module>
 		<module>game-common</module>
+		<module>coverage-report</module>
 	</modules>
 
 	<properties>
@@ -24,7 +25,7 @@
 	<dependencyManagement>
 		<dependencies>
 
-			<!-- Dipendenza Log4j -->
+			<!-- Log4j -->
 			<dependency>
 				<groupId>org.apache.logging.log4j</groupId>
 				<artifactId>log4j-api</artifactId>
@@ -36,7 +37,57 @@
 				<version>2.20.0</version>
 			</dependency>
 
+			<!-- JUnit 5 (Jupiter) -->
+			<dependency>
+				<groupId>org.junit.jupiter</groupId>
+				<artifactId>junit-jupiter</artifactId>
+				<version>5.10.1</version>
+				<scope>test</scope>
+			</dependency>
+
+			<!-- Mockito Core e Mockito JUnit Jupiter Integration -->
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-core</artifactId>
+				<version>5.8.0</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-junit-jupiter</artifactId>
+				<version>5.8.0</version>
+				<scope>test</scope>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.12</version>
+				<executions>
+					<!-- Prepara l'agente JaCoCo prima dell'esecuzione dei test -->
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<!-- Genera i report di coverage al termine della fase di
+					test -->
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 
 </project>

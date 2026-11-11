@@ -16,4 +16,9 @@ public class Deck implements Serializable {
 		//TODO selezione del mazzo di battaglia
 	}
 
+	public void addCard(int cardId, int quantity) {
+	    if (quantity > 0) {
+	        cards.put(cardId, cards.getOrDefault(cardId, 0) + quantity);
+	    }
+	}
 }

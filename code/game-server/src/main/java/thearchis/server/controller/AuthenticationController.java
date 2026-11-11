@@ -50,9 +50,7 @@ public class AuthenticationController {
 			return;
 		}
 
-		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
-
-		OperationResult<Void> result = Server.getInstance().getDbManager().registerUser(nickname, password);
+		OperationResult<Void> result = Server.getInstance().getDBManager().registerUser(nickname, password);
 		clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 
 		OperationStatus status = result.getStatus();
@@ -90,13 +88,13 @@ public class AuthenticationController {
 
 		Server server = Server.getInstance();
 		if (server.isUserAuthenticated(nickname)) {
-			logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
+			logger.warn("Client #{} : nickname '{}' già autenticato.", clientId, nickname);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.ALREADY_LOGGED_IN, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
 		}
 
-		OperationResult<Player> result = server.getDbManager().loginUser(nickname, password);
+		OperationResult<Player> result = server.getDBManager().loginUser(nickname, password);
 		OperationStatus status = result.getStatus();
 
 		if (status == OperationStatus.LOGIN_OK) {

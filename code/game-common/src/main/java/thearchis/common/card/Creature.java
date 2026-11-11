@@ -13,6 +13,10 @@ public class Creature extends Card {
 			String description, boolean constrained, CreatureSubtype subtype, int atk, int def) {
 		super(id, name, manaCost, type, rarity, hero, description, constrained);
 
+		if (type != CardType.CREATURE) {
+			throw new InvalidCardDataException(id, "type mismatch: atteso CREATURE per un'istanza di Creature");
+		}
+
 		summoningSickness = true;
 
 		if (subtype != CreatureSubtype.BEAST && subtype != CreatureSubtype.DEMON && subtype != CreatureSubtype.GOD

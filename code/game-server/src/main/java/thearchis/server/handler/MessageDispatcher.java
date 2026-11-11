@@ -23,14 +23,14 @@ public class MessageDispatcher {
 	private final ShopController shopController;
 	private final CollectionController collectionController;
 	private final GameController gameController;
-	private final BackNavigationController navigationController;
+	private final BackNavigationController backNavigationController;
 
 	private MessageDispatcher() {
 		this.authenticationController = new AuthenticationController();
 		this.shopController = new ShopController();
 		this.collectionController = new CollectionController();
 		this.gameController = new GameController();
-		this.navigationController = new BackNavigationController();
+		this.backNavigationController = new BackNavigationController();
 	}
 
 	public static synchronized MessageDispatcher getInstance() {
@@ -56,10 +56,10 @@ public class MessageDispatcher {
 		switch (type) {
 		case REGISTER_REQUEST -> authenticationController.handleRegister(clientHandler, msg);
 		case LOGIN_REQUEST -> authenticationController.handleLogin(clientHandler, msg);
-		case COLLECTION_REQUEST -> collectionController.handleCollectionRequest(clientHandler);
+		case COLLECTION_REQUEST -> collectionController.handleCollectionRequest(clientHandler, msg);
 		case CRAFT_REQUEST -> collectionController.handleCraftRequest(clientHandler, msg);
 		case DISENCHANT_REQUEST -> collectionController.handleDisenchantRequest(clientHandler, msg);
-		case BACKNAVIGATION_REQUEST -> navigationController.handleBackNavigationRequest(clientHandler, msg);
+		case BACKNAVIGATION_REQUEST -> backNavigationController.handleBackNavigationRequest(clientHandler, msg);
 
 		default -> logger.error("Client #{} : tipo di messaggio sconosciuto ({}).", clientId, type);
 		}
@@ -75,8 +75,10 @@ public class MessageDispatcher {
 		case MAIN_MENU -> type == MessageType.COLLECTION_REQUEST || type == MessageType.BACKNAVIGATION_REQUEST;
 		case IN_COLLECTION -> type == MessageType.CRAFT_REQUEST || type == MessageType.DISENCHANT_REQUEST
 				|| type == MessageType.BACKNAVIGATION_REQUEST;
+		case IN_SHOP -> type == MessageType.BACKNAVIGATION_REQUEST;
 
-		// TODO aggiungere BACKNAVIGATION_REQUEST ai menu che lo consentono
+		// TODO aggiungere BACKNAVIGATION_REQUEST ai menu che lo consentono, aggiungere
+		// IN_DECK_BUILDER, IN_QUEUE, IN_GAME, IN_SHOP
 
 		default -> false;
 		};
@@ -89,6 +91,7 @@ public class MessageDispatcher {
 		case COLLECTION_REQUEST -> MessageType.COLLECTION_RESPONSE;
 		case CRAFT_REQUEST -> MessageType.CRAFT_RESPONSE;
 		case DISENCHANT_REQUEST -> MessageType.DISENCHANT_RESPONSE;
+
 		case BACKNAVIGATION_REQUEST -> MessageType.BACKNAVIGATION_RESPONSE;
 
 		default -> MessageType.ERROR_RESPONSE;

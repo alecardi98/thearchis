@@ -1,6 +1,8 @@
 package thearchis.common.game;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Player implements Serializable {
 
@@ -8,15 +10,16 @@ public class Player implements Serializable {
 	private int coins;
 	private int dust;
 	private Collection collection;
-	// private List<Deck> decks = new List<>();
+	private List<Deck> decks;
 	private int wins;
 	private int losses;
 
-	public Player(String nickname, int coins, int dust, Collection collection, int wins, int losses) {
+	public Player(String nickname, int coins, int dust, Collection collection, List<Deck> decks, int wins, int losses) {
 		this.nickname = nickname;
 		this.coins = coins;
 		this.dust = dust;
 		this.collection = collection;
+		this.decks = (decks != null) ? decks : new ArrayList<>();
 		this.wins = wins;
 		this.losses = losses;
 	}
@@ -36,8 +39,12 @@ public class Player implements Serializable {
 	public void setCollection(Collection collection) {
 		this.collection = collection;
 	}
-	
+
 	public int getDust() {
 		return dust;
+	}
+
+	public int getCoins() {
+		return coins;
 	}
 }

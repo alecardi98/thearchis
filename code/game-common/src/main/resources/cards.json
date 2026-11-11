@@ -15,7 +15,7 @@
   {
     "id": 2,
     "name": "Pupazzo di Paglia",
-    "manaCost": 0,
+    "manaCost": 10,
     "type": "CREATURE",
     "rarity": "COMMON",
     "hero": "NONE",

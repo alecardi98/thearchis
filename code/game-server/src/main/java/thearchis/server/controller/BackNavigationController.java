@@ -10,6 +10,7 @@ import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 import thearchis.server.handler.ClientHandler;
+import thearchis.server.handler.Server;
 
 public class BackNavigationController {
 
@@ -21,8 +22,19 @@ public class BackNavigationController {
 	public void handleBackNavigationRequest(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
 
+		logger.info("Client #{}: ricevuta richiesta di navigazione", clientId);
+
 		if (clientHandler.getPlayer() == null) {
-			logger.warn("Client #{}: richiesta navigazione rifiutata (utente non autenticato).", clientId);
+			logger.warn("Client #{}: richiesta navigazione rifiutata (player null).", clientId);
+			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
+			return;
+		}
+
+		String nickname = clientHandler.getPlayer().getNickname();
+		Server server = Server.getInstance();
+		if (!server.isUserAuthenticated(nickname)) {
+			logger.warn("Client #{}: richiesta navigazione rifiutata (utente {} non autenticato).", clientId, nickname);
 			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
 			return;

@@ -75,15 +75,15 @@ public class Server implements Runnable {
 	}
 
 	private void initializeClient(Socket socket) {
-		int clientId = idGenerator.getAndIncrement(); 
+		int clientId = idGenerator.getAndIncrement();
 		ClientHandler clientHandler = new ClientHandler(socket, clientId);
 
 		try {
 			clientHandler.init();
-			activeClients.put(clientId, clientHandler); 
+			activeClients.put(clientId, clientHandler);
 			logger.info("Client #{} : collegato con successo.", clientId);
 
-			clientThreadPool.submit(clientHandler); 
+			clientThreadPool.submit(clientHandler);
 
 		} catch (IOException e) {
 			logger.error("Client #{} : errore durante l'handshake ({})", clientId, e.getMessage());
@@ -143,8 +143,11 @@ public class Server implements Runnable {
 	/*
 	 * Getter & Setter
 	 */
-	public DBManager getDbManager() {
+	public DBManager getDBManager() {
 		return dbManager;
 	}
 
+	public ConcurrentMap<String, Integer> getAuthenticatedUsers() {
+		return authenticatedUsers;
+	}
 }
