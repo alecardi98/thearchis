@@ -98,8 +98,8 @@ public class Server implements Runnable {
 		if (clientHandler != null) {
 			logger.info("Client #{} : rimosso dai client attivi.", clientId);
 
-			String nickname = clientHandler.getPlayer().getNickname();
-			if (nickname != null) { // client autenticato
+			if (clientHandler.getPlayer() != null && clientHandler.getPlayer().getNickname() != null) {
+				String nickname = clientHandler.getPlayer().getNickname();
 				authenticatedUsers.remove(nickname);
 				logger.info("Client #{} : autenticazione utente '{}' rimossa.", clientId, nickname);
 			}

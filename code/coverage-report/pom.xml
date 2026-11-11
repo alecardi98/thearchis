@@ -15,6 +15,11 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.thearchis</groupId>
+			<artifactId>game-client</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.thearchis</groupId>
 			<artifactId>game-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>

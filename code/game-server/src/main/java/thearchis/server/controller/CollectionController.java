@@ -57,7 +57,8 @@ public class CollectionController {
 		}
 
 		if (!(msg.getData() instanceof CollectionData)) {
-			logger.warn("Client #{}: richiesta collezione rifiutata (payload non di tipo CollectionData).", clientId, nickname);
+			logger.warn("Client #{}: richiesta collezione rifiutata (payload non di tipo CollectionData).", clientId,
+					nickname);
 			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.COLLECTION_RESPONSE, result));
 			return;
@@ -152,7 +153,7 @@ public class CollectionController {
 	}
 
 	/*
-	 * Gestisce DISENCHAMT_REQUEST per il disenchant delle carte: invia al client il
+	 * Gestisce DISENCHANT_REQUEST per il disenchant delle carte: invia al client il
 	 * Player aggiornato
 	 */
 	public void handleDisenchantRequest(ClientHandler clientHandler, Message msg) {
