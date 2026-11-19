@@ -14,18 +14,17 @@ import thearchis.server.handler.Server;
 
 public class BackNavigationController {
 
-	private static final Logger logger = LogManager.getLogger(BackNavigationController.class);
+	private static final Logger logger = LogManager.getLogger("[BackNavigationController]");
 
 	public BackNavigationController() {
 	}
 
 	public void handleBackNavigationRequest(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
-
-		logger.info("Client #{}: ricevuta richiesta di navigazione", clientId);
+		logger.info("Client #{} : ricevuta richiesta di navigazione", clientId);
 
 		if (clientHandler.getPlayer() == null) {
-			logger.warn("Client #{}: richiesta navigazione rifiutata (player null).", clientId);
+			logger.warn("Client #{} : richiesta navigazione rifiutata (player null).", clientId);
 			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
 			return;
@@ -34,21 +33,15 @@ public class BackNavigationController {
 		String nickname = clientHandler.getPlayer().getNickname();
 		Server server = Server.getInstance();
 		if (!server.isUserAuthenticated(nickname)) {
-			logger.warn("Client #{}: richiesta navigazione rifiutata (utente {} non autenticato).", clientId, nickname);
-			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
-			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
-			return;
-		}
-
-		if (msg == null || msg.getData() == null) {
-			logger.warn("Client #{}: richiesta navigazione rifiutata (messaggio o payload nullo).", clientId);
+			logger.warn("Client #{} : richiesta navigazione rifiutata (utente {} non autenticato).", clientId,
+					nickname);
 			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
 			return;
 		}
 
 		if (!(msg.getData() instanceof BackNavigationData)) {
-			logger.warn("Client #{}: richiesta navigazione rifiutata (payload non di tipo BackNavigationData).",
+			logger.warn("Client #{} : richiesta navigazione rifiutata (payload non di tipo BackNavigationData).",
 					clientId);
 			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
@@ -60,15 +53,14 @@ public class BackNavigationController {
 		ClientState start = clientHandler.getClientState();
 
 		if (!isValidTransition(start, destination)) {
-			logger.warn("Client #{}: tentativo di navigazione indietro non valida ({} -> {}).", clientId, start,
-					destination);
+			logger.warn("Client #{} : tentativo di navigazione non valida ({} -> {}).", clientId, start, destination);
 			OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BAD_REQUEST, start);
 			clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));
 			return;
 		}
 
 		clientHandler.setClientState(destination);
-		logger.info("Client #{}: transizione completata con successo ({} -> {}).", clientId, start, destination);
+		logger.info("Client #{} : transizione completata con successo ({} -> {}).", clientId, start, destination);
 
 		OperationResult<ClientState> result = new OperationResult<>(OperationStatus.BACKNAVIGATION_OK, destination);
 		clientHandler.sendMessage(new Message(MessageType.BACKNAVIGATION_RESPONSE, result));

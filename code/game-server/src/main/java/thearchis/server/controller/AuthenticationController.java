@@ -15,7 +15,7 @@ import thearchis.server.handler.Server;
 
 public class AuthenticationController {
 
-	private static final Logger logger = LogManager.getLogger(AuthenticationController.class);
+	private static final Logger logger = LogManager.getLogger("[AuthenticationController]");
 
 	public AuthenticationController() {
 	}
@@ -24,15 +24,8 @@ public class AuthenticationController {
 		int clientId = clientHandler.getClientId();
 		logger.info("Client #{} : ricevuta richiesta di registrazione.", clientId);
 
-		if (msg == null || msg.getData() == null) {
-			logger.warn("Client #{}: richiesta registrazione rifiutata (messaggio o payload nullo).", clientId);
-			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
-			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
-			return;
-		}
-
 		if (!(msg.getData() instanceof AuthenticationData)) {
-			logger.warn("Client #{}: richiesta registrazione rifiutata (payload non di tipo AuthenticationData).",
+			logger.warn("Client #{} : richiesta registrazione rifiutata (payload non di tipo AuthenticationData).",
 					clientId);
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
@@ -44,7 +37,7 @@ public class AuthenticationController {
 		String password = userData.getPassword();
 
 		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
-			logger.warn("Client #{}: richiesta registrazione rifiutata (credenziali nulle o vuote).", clientId);
+			logger.warn("Client #{} : richiesta registrazione rifiutata (credenziali null o vuote).", clientId);
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 			return;
@@ -61,15 +54,8 @@ public class AuthenticationController {
 		int clientId = clientHandler.getClientId();
 		logger.info("Client #{} : ricevuta richiesta di login.", clientId);
 
-		if (msg == null || msg.getData() == null) {
-			logger.warn("Client #{}: richiesta login rifiutata (messaggio o payload nullo).", clientId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
-			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
-			return;
-		}
-
 		if (!(msg.getData() instanceof AuthenticationData)) {
-			logger.warn("Client #{}: richiesta login rifiutata (payload non di tipo AuthenticationData).", clientId);
+			logger.warn("Client #{} : richiesta login rifiutata (payload non di tipo AuthenticationData).", clientId);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
@@ -80,7 +66,7 @@ public class AuthenticationController {
 		String password = userData.getPassword();
 
 		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
-			logger.warn("Client #{}: richiesta login rifiutata (credenziali nulle o vuote).", clientId);
+			logger.warn("Client #{} : richiesta login rifiutata (credenziali null o vuote).", clientId);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
@@ -88,7 +74,7 @@ public class AuthenticationController {
 
 		Server server = Server.getInstance();
 		if (server.isUserAuthenticated(nickname)) {
-			logger.warn("Client #{} : nickname '{}' già autenticato.", clientId, nickname);
+			logger.warn("Client #{} : utente '{}' già autenticato.", clientId, nickname);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.ALREADY_LOGGED_IN, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;

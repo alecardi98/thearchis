@@ -70,6 +70,10 @@ public class ClientHandler implements Runnable {
 	}
 
 	public synchronized void sendMessage(Object msg) {
+		if (msg == null) {
+			logger.error("Client #{} : il messaggio da inviare al client è null.", clientId);
+			return;
+		}
 		if (out == null) {
 			logger.error("Client #{} : impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
 					clientId);
@@ -79,7 +83,7 @@ public class ClientHandler implements Runnable {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Client #{} : errore I/O durante l'invio del pacchetto a client #{}.", clientId,
+			logger.error("Client #{} : errore I/O durante l'invio del pacchetto al client ({}).", clientId,
 					e.getMessage());
 		}
 	}
@@ -96,7 +100,12 @@ public class ClientHandler implements Runnable {
 	}
 
 	public void setPlayer(Player player) {
-		this.player = player;
+		if(player == null) {
+			logger.error("Client #{} : setPlayer non può settare player null.",clientId);
+			return;
+		} else {
+			this.player = player;
+		}
 	}
 
 	public ClientState getClientState() {
@@ -104,6 +113,11 @@ public class ClientHandler implements Runnable {
 	}
 
 	public void setClientState(ClientState clientState) {
-		this.clientState = clientState;
+		if(clientState == null) {
+			logger.error("Client #{} : setClientState non può settare clientState null.",clientId);
+			return;
+		} else {
+			this.clientState = clientState;
+		}
 	}
 }

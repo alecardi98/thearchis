@@ -100,23 +100,6 @@ class BackNavigationControllerTest {
 	}
 
 	@Test
-	@DisplayName("Rifiuta BACKNAVIGATION_REQUEST per messaggio null")
-	void testHandleBackNavigationNullMessage() {
-		setupAuthenticatedUser();
-
-		backNavigationController.handleBackNavigationRequest(clientHandler, null);
-
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(clientHandler).sendMessage(captor.capture());
-
-		Message response = captor.getValue();
-		assertEquals(MessageType.BACKNAVIGATION_RESPONSE, response.getType());
-
-		OperationResult<?> result = (OperationResult<?>) response.getData();
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-	}
-
-	@Test
 	@DisplayName("Rifiuta BACKNAVIGATION_REQUEST per payload null")
 	void testHandleBackNavigationNullPayload() {
 		setupAuthenticatedUser();

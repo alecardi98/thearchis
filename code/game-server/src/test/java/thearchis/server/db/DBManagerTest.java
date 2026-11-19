@@ -46,6 +46,36 @@ class DBManagerTest {
 	}
 
 	@Test
+	@DisplayName("Rifiuta le credenziali null/vuote in registrazione senza toccare il DB")
+	void testRegisterUserNullCredentials() {
+		OperationResult<Void> resultBothNull = dbManager.registerUser(null, null);
+		assertEquals(OperationStatus.BAD_REQUEST, resultBothNull.getStatus());
+		assertNull(resultBothNull.getData());
+
+		OperationResult<Void> resultNullNick = dbManager.registerUser(null, "psw");
+		assertEquals(OperationStatus.BAD_REQUEST, resultNullNick.getStatus());
+		assertNull(resultNullNick.getData());
+
+		OperationResult<Void> resultNullPass = dbManager.registerUser("nick", null);
+		assertEquals(OperationStatus.BAD_REQUEST, resultNullPass.getStatus());
+		assertNull(resultNullPass.getData());
+
+		OperationResult<Void> resultBothEmpty = dbManager.registerUser("", "");
+		assertEquals(OperationStatus.BAD_REQUEST, resultBothEmpty.getStatus());
+		assertNull(resultBothEmpty.getData());
+
+		OperationResult<Void> resultEmptyNick = dbManager.registerUser("", "psw");
+		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyNick.getStatus());
+		assertNull(resultEmptyNick.getData());
+
+		OperationResult<Void> resultEmptyPass = dbManager.registerUser("nick", "");
+		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyPass.getStatus());
+		assertNull(resultEmptyPass.getData());
+
+		verify(mockUsersCollection, never()).insertOne(any(Document.class));
+	}
+
+	@Test
 	@DisplayName("Rifiuta un nickname già esistente in registrazione (Errore 11000)")
 	void testRegisterUserNicknameAlreadyUsed() {
 		WriteError writeError = new WriteError(11000, "DuplicateKey", new BsonDocument());
@@ -74,6 +104,36 @@ class DBManagerTest {
 		Document initialCollection = (Document) createdDoc.get("collection");
 		assertNotNull(initialCollection, "La collezione iniziale non deve essere null");
 		assertFalse(initialCollection.isEmpty(), "La collezione iniziale deve contenere le carte base");
+	}
+
+	@Test
+	@DisplayName("Rifiuta le credenziali null/vuote in login senza toccare il DB")
+	void testLoginUserNullCredentials() {
+		OperationResult<Player> resultBothNull = dbManager.loginUser(null, null);
+		assertEquals(OperationStatus.BAD_REQUEST, resultBothNull.getStatus());
+		assertNull(resultBothNull.getData());
+
+		OperationResult<Player> resultNullNick = dbManager.loginUser(null, "password");
+		assertEquals(OperationStatus.BAD_REQUEST, resultNullNick.getStatus());
+		assertNull(resultNullNick.getData());
+
+		OperationResult<Player> resultNullPass = dbManager.loginUser("nickname", null);
+		assertEquals(OperationStatus.BAD_REQUEST, resultNullPass.getStatus());
+		assertNull(resultNullPass.getData());
+
+		OperationResult<Player> resultBothEmpty = dbManager.loginUser("", "");
+		assertEquals(OperationStatus.BAD_REQUEST, resultBothEmpty.getStatus());
+		assertNull(resultBothEmpty.getData());
+
+		OperationResult<Player> resultEmptyNick = dbManager.loginUser("", "psw");
+		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyNick.getStatus());
+		assertNull(resultEmptyNick.getData());
+
+		OperationResult<Player> resultEmptyPass = dbManager.loginUser("nick", "");
+		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyPass.getStatus());
+		assertNull(resultEmptyPass.getData());
+
+		verify(mockUsersCollection, never()).find(any(Bson.class));
 	}
 
 	@Test
@@ -121,6 +181,18 @@ class DBManagerTest {
 	}
 
 	@Test
+	@DisplayName("Craft fallito per nickname null")
+	void testCraftNicknameNull() {
+		OperationResult<Player> result = dbManager.craftCard(null, 101, 100);
+
+		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
+		assertNull(result.getData());
+
+		verify(mockUsersCollection, never()).find(any(Bson.class));
+		verify(mockUsersCollection, never()).updateOne(any(Bson.class), any(Bson.class));
+	}
+
+	@Test
 	@DisplayName("Craft fallito se l'utente non esiste nel database (userDoc nullo)")
 	void testCraftUserNotFound() {
 		when(mockFindIterable.first()).thenReturn(null);
@@ -163,6 +235,18 @@ class DBManagerTest {
 		assertNotNull(result.getData());
 		assertEquals(50, result.getData().getDust());
 		verify(mockUsersCollection).updateOne(any(Bson.class), any(Bson.class));
+	}
+
+	@Test
+	@DisplayName("Disenchant fallito per nickname null")
+	void testDisenchantNicknameNull() {
+		OperationResult<Player> result = dbManager.disenchantCard(null, 101, 20);
+
+		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
+		assertNull(result.getData());
+
+		verify(mockUsersCollection, never()).find(any(Bson.class));
+		verify(mockUsersCollection, never()).updateOne(any(Bson.class), any(Bson.class));
 	}
 
 	@Test
@@ -230,13 +314,24 @@ class DBManagerTest {
 	}
 
 	@Test
+	@DisplayName("Collezione non cercata se nickname null")
+	void testGetUserCollectionNullNickname() {
+		OperationResult<Collection> result = dbManager.getUserCollection(null);
+
+		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
+		assertNull(result.getData());
+
+		verify(mockUsersCollection, never()).find(any(Bson.class));
+	}
+
+	@Test
 	@DisplayName("Collezione non trovata se l'utente non viene trovato")
 	void testGetUserCollectionUserNotFound() {
 		when(mockFindIterable.first()).thenReturn(null);
 
 		OperationResult<Collection> result = dbManager.getUserCollection("UnknownUser");
 
-		assertEquals(OperationStatus.DB_ERROR, result.getStatus());
+		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
 		assertNull(result.getData());
 	}
 

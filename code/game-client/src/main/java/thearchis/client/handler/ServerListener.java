@@ -91,7 +91,7 @@ public class ServerListener implements Runnable {
 		switch (status) {
 		case REGISTER_OK -> System.out.println("[GUI] Registrazione: registrazione riuscita.");
 		case NICKNAME_ALREADY_EXISTS -> System.out.println("[GUI] Registrazione: nickname già esistente.");
-		case BAD_REQUEST -> System.out.println("[GUI] Registrazione: azione non consentita nello stato attuale.");
+		case BAD_REQUEST -> System.out.println("[GUI] Registrazione: richiesta non valida.");
 		case DB_ERROR -> System.out.println("[GUI] Registrazione: errore del server/database.");
 		default -> System.out.println("[GUI] Registrazione: risposta sconosciuta.");
 		}
@@ -120,7 +120,7 @@ public class ServerListener implements Runnable {
 		}
 		case INVALID_CREDENTIALS -> System.out.println("[GUI] Login: credenziali errate.");
 		case ALREADY_LOGGED_IN -> System.out.println("[GUI] Login: utente già loggato.");
-		case BAD_REQUEST -> System.out.println("[GUI] Login: azione non consentita nello stato attuale.");
+		case BAD_REQUEST -> System.out.println("[GUI] Login: richiesta non valida.");
 		case DB_ERROR -> System.out.println("[GUI] Login: errore del server/database.");
 		default -> System.out.println("[GUI] Login: risposta sconosciuta.");
 		}
@@ -153,7 +153,7 @@ public class ServerListener implements Runnable {
 			client.getPlayer().setCollection(collection);
 			System.out.println("[GUI] Collezione: collezione caricata con successo.");
 		}
-		case BAD_REQUEST -> System.out.println("[GUI] Collezione: azione non consentita nello stato attuale.");
+		case BAD_REQUEST -> System.out.println("[GUI] Collezione: richiesta non valida.");
 		case DB_ERROR -> System.out.println("[GUI] Collezione: errore del server/database.");
 		default -> System.out.println("[GUI] Collezione: risposta sconosciuta.");
 		}
@@ -181,7 +181,7 @@ public class ServerListener implements Runnable {
 			}
 		}
 		case NOT_ENOUGH_DUST -> System.out.println("[GUI] Craft: polvere insufficiente.");
-		case BAD_REQUEST -> System.out.println("[GUI] Craft: azione non consentita o carta vincolata.");
+		case BAD_REQUEST -> System.out.println("[GUI] Craft: richiesta non valida.");
 		case DB_ERROR -> System.out.println("[GUI] Craft: errore del server/database.");
 		default -> System.out.println("[GUI] Craft: risposta sconosciuta.");
 		}
@@ -209,7 +209,7 @@ public class ServerListener implements Runnable {
 			}
 		}
 		case CARD_NOT_OWNED -> System.out.println("[GUI] Disenchant: carta non posseduta.");
-		case BAD_REQUEST -> System.out.println("[GUI] Disenchant: azione non consentita o carta vincolata.");
+		case BAD_REQUEST -> System.out.println("[GUI] Disenchant: richiesta non valida.");
 		case DB_ERROR -> System.out.println("[GUI] Disenchant: errore del server/database.");
 		default -> System.out.println("[GUI] Disenchant: risposta sconosciuta.");
 		}
@@ -235,7 +235,7 @@ public class ServerListener implements Runnable {
 				return;
 			}
 		}
-		case BAD_REQUEST -> System.out.println("[GUI] BackNavigation: errore nei dati o azione non consentita.");
+		case BAD_REQUEST -> System.out.println("[GUI] BackNavigation: richiesta non valida.");
 		default -> System.out.println("[GUI] BackNavigation: risposta sconosciuta.");
 		}
 	}

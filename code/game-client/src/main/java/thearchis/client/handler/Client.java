@@ -87,29 +87,40 @@ public class Client {
 	}
 
 	public synchronized void sendMessage(Object msg) {
+		if (msg == null) {
+			logger.warn("Impossibile inviare il messaggio (messaggio null).");
+			return;
+		}
+
 		if (out == null || socket == null || socket.isClosed() || !socket.isConnected()) {
-			logger.warn("Impossibile inviare il messaggio '{}': socket chiuso o non connesso.",
-					msg != null ? msg.getClass().getSimpleName() : "null");
+			logger.warn("Impossibile inviare il messaggio al server (socket chiuso o non connesso).");
 			return;
 		}
 
 		try {
 			out.writeObject(msg);
 			out.flush();
-			logger.debug("Messaggio inviato con successo: {}", msg != null ? msg.getClass().getSimpleName() : "null");
+			logger.debug("Messaggio inviato con successo");
 		} catch (IOException e) {
-			logger.error("Errore di I/O durante l'invio del messaggio di tipo '{}': {}",
-					msg != null ? msg.getClass().getSimpleName() : "null", e.getMessage());
+			logger.error("Errore di I/O durante l'invio del messaggio ({})", e.getMessage());
 		}
 	}
 
 	public synchronized void sendRegisterRequest(String nickname, String password) {
+		if (nickname == null || password == null || nickname.isBlank() || password.isBlank()) {
+			logger.error("Errore sendRegisterRequest (credenziali non valide).");
+			return;
+		}
 		AuthenticationData authenticationData = new AuthenticationData(nickname, password);
 		Message msg = new Message(MessageType.REGISTER_REQUEST, authenticationData);
 		sendMessage(msg);
 	}
 
 	public synchronized void sendLoginRequest(String nickname, String password) {
+		if (nickname == null || password == null || nickname.isBlank() || password.isBlank()) {
+			logger.error("Errore sendLoginRequest (credenziali non valide).");
+			return;
+		}
 		AuthenticationData authenticationData = new AuthenticationData(nickname, password);
 		Message msg = new Message(MessageType.LOGIN_REQUEST, authenticationData);
 		sendMessage(msg);
@@ -122,18 +133,30 @@ public class Client {
 	}
 
 	public synchronized void sendCraftRequest(int cardId) {
+		if (cardId <= 0) {
+			logger.error("Errore sendCraftRequest (cardId non valido).");
+			return;
+		}
 		CollectionData collectionData = new CollectionData(cardId);
 		Message msg = new Message(MessageType.CRAFT_REQUEST, collectionData);
 		sendMessage(msg);
 	}
 
 	public synchronized void sendDisenchantRequest(int cardId) {
+		if (cardId <= 0) {
+			logger.error("Errore sendDisenchantRequest (cardId non valido).");
+			return;
+		}
 		CollectionData collectionData = new CollectionData(cardId);
 		Message msg = new Message(MessageType.DISENCHANT_REQUEST, collectionData);
 		sendMessage(msg);
 	}
-	
+
 	public synchronized void sendBackNavigationRequest(ClientState destination) {
+		if (destination == null) {
+			logger.error("Errore sendBackNavigatioRequest (destination null).");
+			return;
+		}
 		BackNavigationData backNavigationData = new BackNavigationData(destination);
 		Message msg = new Message(MessageType.BACKNAVIGATION_REQUEST, backNavigationData);
 		sendMessage(msg);

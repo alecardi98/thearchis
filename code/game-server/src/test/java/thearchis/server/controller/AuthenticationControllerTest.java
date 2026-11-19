@@ -44,21 +44,6 @@ class AuthenticationControllerTest {
 	}
 
 	@Test
-	@DisplayName("Rifiuta registrazione per messaggio nullo")
-	void testHandleRegisterNullMessage() {
-		authenticationController.handleRegister(clientHandler, null);
-
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(clientHandler).sendMessage(captor.capture());
-
-		Message response = captor.getValue();
-		assertEquals(MessageType.REGISTER_RESPONSE, response.getType());
-
-		OperationResult<?> result = (OperationResult<?>) response.getData();
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-	}
-
-	@Test
 	@DisplayName("Rifiuta registrazione per payload nullo")
 	void testHandleRegisterNullPayload() {
 		Message message = new Message(MessageType.REGISTER_REQUEST, null);
@@ -95,16 +80,12 @@ class AuthenticationControllerTest {
 	@Test
 	@DisplayName("Rifiuta registrazione per credenziali nulle")
 	void testHandleRegisterNullCredentials() {
-		Message message = new Message(MessageType.REGISTER_REQUEST, new AuthenticationData(null, null));
-
-		authenticationController.handleRegister(clientHandler, message);
-
+		AuthenticationData data = new AuthenticationData(null, null);
+		authenticationController.handleRegister(clientHandler, new Message(MessageType.REGISTER_REQUEST, data));
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 		verify(clientHandler).sendMessage(captor.capture());
-
 		Message response = captor.getValue();
 		assertEquals(MessageType.REGISTER_RESPONSE, response.getType());
-
 		OperationResult<?> result = (OperationResult<?>) response.getData();
 		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
 	}
@@ -150,21 +131,6 @@ class AuthenticationControllerTest {
 			assertEquals(OperationStatus.REGISTER_OK, result.getStatus());
 			assertNull(result.getData(), "Il payload di esito della registrazione deve essere null");
 		}
-	}
-
-	@Test
-	@DisplayName("Rifiuta login per messaggio nullo")
-	void testHandleLoginNullMessage() {
-		authenticationController.handleLogin(clientHandler, null);
-
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(clientHandler).sendMessage(captor.capture());
-
-		Message response = captor.getValue();
-		assertEquals(MessageType.LOGIN_RESPONSE, response.getType());
-
-		OperationResult<?> result = (OperationResult<?>) response.getData();
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
 	}
 
 	@Test

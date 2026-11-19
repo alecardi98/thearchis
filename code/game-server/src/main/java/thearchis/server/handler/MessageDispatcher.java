@@ -10,18 +10,20 @@ import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 import thearchis.server.controller.AuthenticationController;
 import thearchis.server.controller.CollectionController;
+import thearchis.server.controller.DeckBuilderController;
 import thearchis.server.controller.GameController;
 import thearchis.server.controller.BackNavigationController;
 import thearchis.server.controller.ShopController;
 
 public class MessageDispatcher {
 
-	private static final Logger logger = LogManager.getLogger(MessageDispatcher.class);
+	private static final Logger logger = LogManager.getLogger("[MessageDispatcher]");
 	private static MessageDispatcher instance;
 
 	private final AuthenticationController authenticationController;
 	private final ShopController shopController;
 	private final CollectionController collectionController;
+	private final DeckBuilderController deckBuilderController;
 	private final GameController gameController;
 	private final BackNavigationController backNavigationController;
 
@@ -31,6 +33,8 @@ public class MessageDispatcher {
 		this.collectionController = new CollectionController();
 		this.gameController = new GameController();
 		this.backNavigationController = new BackNavigationController();
+		this.deckBuilderController = new DeckBuilderController();
+
 	}
 
 	public static synchronized MessageDispatcher getInstance() {
@@ -42,12 +46,17 @@ public class MessageDispatcher {
 
 	public void dispatch(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
-		ClientState currentState = clientHandler.getClientState();
-		MessageType type = msg.getType();
+		ClientState currentClientState = clientHandler.getClientState();
 
-		if (!isAllowedInState(type, currentState)) {
-			logger.warn("Client #{} : tentativo non autorizzato di inviare '{}' nello stato {}.", clientId, type,
-					currentState);
+		if (!(msg.getType() instanceof MessageType type)) {
+			logger.warn("Client #{} : messaggio non di tipo MessageType ricevuto.", clientId);
+			sendBadRequestResponse(clientHandler, null);
+			return;
+		}
+
+		if (!isAllowedInState(type, currentClientState)) {
+			logger.warn("Client #{} : tentativo non autorizzato di inviare {} nello stato {}.", clientId, type,
+					currentClientState);
 
 			sendBadRequestResponse(clientHandler, type);
 			return;
@@ -94,6 +103,7 @@ public class MessageDispatcher {
 
 		case BACKNAVIGATION_REQUEST -> MessageType.BACKNAVIGATION_RESPONSE;
 
+		case null -> MessageType.ERROR_RESPONSE;
 		default -> MessageType.ERROR_RESPONSE;
 		};
 

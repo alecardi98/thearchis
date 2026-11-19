@@ -45,6 +45,23 @@ class MessageDispatcherTest {
 	}
 
 	@Test
+	@DisplayName("Rifiuta messaggio non di tipo MessageType")
+	void testDispatchInvalidMessage() {
+
+		Message badMsg = new Message(null, new CollectionData());
+		messageDispatcher.dispatch(mockClientHandler, badMsg);
+
+		ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+		verify(mockClientHandler, times(1)).sendMessage(messageCaptor.capture());
+
+		Message response = messageCaptor.getValue();
+		assertEquals(MessageType.ERROR_RESPONSE, response.getType());
+
+		OperationResult<?> result = (OperationResult<?>) response.getData();
+		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
+	}
+
+	@Test
 	@DisplayName("Rifiuta REGISTER_REQUEST per utente non NOT_AUTHENTICATED")
 	void testDispatchInvalidRegisterRequest() {
 		when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
@@ -67,7 +84,8 @@ class MessageDispatcherTest {
 	void testDispatchInvalidLoginRequest() {
 		when(mockClientHandler.getClientState()).thenReturn(ClientState.MAIN_MENU);
 
-		Message loginMsg = new Message(MessageType.LOGIN_REQUEST, null);
+		AuthenticationData credentials = new AuthenticationData("nickname", "password");
+		Message loginMsg = new Message(MessageType.LOGIN_REQUEST, credentials);
 		messageDispatcher.dispatch(mockClientHandler, loginMsg);
 
 		ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);

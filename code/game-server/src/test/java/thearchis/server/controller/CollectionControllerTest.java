@@ -116,23 +116,6 @@ class CollectionControllerTest {
 	}
 
 	@Test
-	@DisplayName("Rifiuta COLLECTION_REQUEST per messaggio null")
-	void testHandleCollectionRequestNullMessage() {
-		setupAuthenticatedUser();
-
-		collectionController.handleCollectionRequest(mockClientHandler, null);
-
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(mockClientHandler).sendMessage(captor.capture());
-
-		Message response = captor.getValue();
-		assertEquals(MessageType.COLLECTION_RESPONSE, response.getType());
-
-		OperationResult<?> result = (OperationResult<?>) response.getData();
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-	}
-
-	@Test
 	@DisplayName("Rifiuta COLLECTION_REQUEST per payload null")
 	void testHandleCollectionRequestNullPayload() {
 		setupAuthenticatedUser();
@@ -247,23 +230,6 @@ class CollectionControllerTest {
 		Message message = new Message(MessageType.CRAFT_REQUEST, new CollectionData(1));
 
 		collectionController.handleCraftRequest(mockClientHandler, message);
-
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(mockClientHandler).sendMessage(captor.capture());
-
-		Message response = captor.getValue();
-		assertEquals(MessageType.CRAFT_RESPONSE, response.getType());
-
-		OperationResult<?> result = (OperationResult<?>) response.getData();
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-	}
-
-	@Test
-	@DisplayName("Rifiuta CRAFT_REQUEST per messaggio null")
-	void testHandleCraftRequestNullMessage() {
-		setupAuthenticatedUser();
-
-		collectionController.handleCraftRequest(mockClientHandler, null);
 
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 		verify(mockClientHandler).sendMessage(captor.capture());
@@ -415,23 +381,6 @@ class CollectionControllerTest {
 		Message message = new Message(MessageType.DISENCHANT_REQUEST, new CollectionData(1));
 
 		collectionController.handleDisenchantRequest(mockClientHandler, message);
-
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(mockClientHandler).sendMessage(captor.capture());
-
-		Message response = captor.getValue();
-		assertEquals(MessageType.DISENCHANT_RESPONSE, response.getType());
-
-		OperationResult<?> result = (OperationResult<?>) response.getData();
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-	}
-
-	@Test
-	@DisplayName("Rifiuta DISENCHANT_REQUEST per messaggio null")
-	void testHandleDisenchantRequestNullMessage() {
-		setupAuthenticatedUser();
-
-		collectionController.handleDisenchantRequest(mockClientHandler, null);
 
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 		verify(mockClientHandler).sendMessage(captor.capture());

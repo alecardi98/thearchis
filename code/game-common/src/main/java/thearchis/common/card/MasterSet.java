@@ -20,7 +20,7 @@ import java.util.Map;
 
 public class MasterSet {
 
-	private static final Logger logger = LogManager.getLogger(MasterSet.class);
+	private static final Logger logger = LogManager.getLogger("[MasterSet]");
 	private static final String CARDS_FILE_PATH = "/cards.json";
 
 	private static MasterSet instance;

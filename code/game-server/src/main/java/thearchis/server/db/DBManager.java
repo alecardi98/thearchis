@@ -32,7 +32,7 @@ import org.bson.conversions.Bson;
 
 public class DBManager {
 
-	private static final Logger logger = LogManager.getLogger(DBManager.class);
+	private static final Logger logger = LogManager.getLogger("[DBManager]");
 	private static final String DB_NAME = "thearchis_db";
 	private static final String USERS_COLLECTION = "users";
 
@@ -115,6 +115,12 @@ public class DBManager {
 
 	public OperationResult<Void> registerUser(String nickname, String password) {
 		try {
+			if (nickname == null || password == null || nickname.isBlank() || password.isBlank()) {
+				logger.error("Registrazione : Errore nelle credenziali di registrazione (credenziali null o vuote).");
+				OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+				return result;
+			}
+
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 
 			Document initialCollection = new Document();
@@ -130,24 +136,24 @@ public class DBManager {
 
 			users.insertOne(newUser);
 
-			logger.info("Nuovo account e profilo inizializzati con successo per: '{}' con {} carte base.", nickname,
-					initialCollection.size());
+			logger.info("Registrazione : Utente {} : Nuovo account e profilo inizializzati con successo.", nickname);
 
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.REGISTER_OK, null);
 			return result;
 
 		} catch (MongoWriteException e) {
 			if (e.getError().getCode() == 11000) { // DuplicateKeyError
-				logger.warn("Registrazione fallita: il nickname '{}' è già in uso.", nickname);
+				logger.warn("Registrazione : Utente {} : Registrazione fallita (nickname già in uso).", nickname);
 				OperationResult<Void> result = new OperationResult<>(OperationStatus.NICKNAME_ALREADY_EXISTS, null);
 				return result;
 			}
-			logger.error("Errore di scrittura MongoDB per '{}': {}", nickname, e.getMessage());
+			logger.error("Registrazione : Utente {} : Errore di scrittura MongoDB ({}).", nickname, e.getMessage());
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante la registrazione di '{}': {}", nickname, e.getMessage());
+			logger.error("Registrazione : Utente {} : Errore MongoDB durante la registrazione ({}).", nickname,
+					e.getMessage());
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
@@ -155,23 +161,29 @@ public class DBManager {
 
 	public OperationResult<Player> loginUser(String nickname, String password) {
 		try {
+			if (nickname == null || password == null || nickname.isBlank() || password.isBlank()) {
+				logger.error("Login : Errore nelle credenziali di login (presenza di dati null).");
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+				return result;
+			}
+
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null || !password.equals(userDoc.getString("password"))) {
-				logger.warn("Login fallito per '{}' (credenziali errate).", nickname);
+				logger.warn("Login : Utente {} : Login fallito (credenziali errate).", nickname);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.INVALID_CREDENTIALS, null);
 				return result;
 			}
 
-			logger.info("Login eseguito con successo per '{}'.", nickname);
+			logger.info("Login : Utente {} : Login eseguito con successo.", nickname);
 
 			Player player = parsePlayerFromDocument(userDoc);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.LOGIN_OK, player);
 			return result;
 
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante il login di '{}' ({}).", nickname, e.getMessage());
+			logger.error("Login : Utente {} : Errore MongoDB durante il login ({}).", nickname, e.getMessage());
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
@@ -251,24 +263,30 @@ public class DBManager {
 
 	public OperationResult<Collection> getUserCollection(String nickname) {
 		try {
+			if (nickname == null) {
+				logger.warn("Collection : Recupero collezione fallito (nickname null).");
+				OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+				return result;
+			}
+
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
-				logger.warn("Recupero collezione fallito: utente '{}' non trovato.", nickname);
-				OperationResult<Collection> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+				logger.warn("Nickname {} : recupero collezione fallito (utente non trovato).", nickname);
+				OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
 			Document collectionDoc = userDoc.get("collection", Document.class);
 			Collection collection = parseCollectionFromDocument(collectionDoc);
 
-			logger.info("Collezione recuperata con successo per l'utente '{}'.", nickname);
+			logger.info("Collezione recuperata con successo per l'utente {}.", nickname);
 			OperationResult<Collection> result = new OperationResult<>(OperationStatus.COLLECTION_OK, collection);
 			return result;
 
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante il recupero della collezione per '{}' ({})", nickname, e.getMessage());
+			logger.error("Errore MongoDB durante il recupero della collezione per {} ({})", nickname, e.getMessage());
 			OperationResult<Collection> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
@@ -301,18 +319,24 @@ public class DBManager {
 
 	public OperationResult<Player> craftCard(String nickname, int cardId, int craftCost) {
 		try {
+			if (nickname == null) {
+				logger.error("Craft fallito: nickname null.");
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+				return result;
+			}
+
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
-				logger.warn("Craft fallito: utente '{}' non trovato nel DB.", nickname);
+				logger.warn("Craft fallito per '{}: utente non trovato nel DB.", nickname);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
 			int currentDust = userDoc.getInteger("dust", 0);
 			if (currentDust < craftCost) {
-				logger.warn("Craft fallito per '{}': polvere insufficiente (richiesta: {}, posseduta: {}).", nickname,
+				logger.warn("Craft fallito per {}: polvere insufficiente (richiesta: {}, posseduta: {}).", nickname,
 						craftCost, currentDust);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.NOT_ENOUGH_DUST, null);
 				return result;
@@ -325,8 +349,8 @@ public class DBManager {
 			Document updatedUserDoc = users.find(Filters.eq("nickname", nickname)).first();
 			Player updatedPlayer = parsePlayerFromDocument(updatedUserDoc);
 
-			logger.info("Carta #{} craftata con successo da '{}'. Nuova polvere: {}.", cardId, nickname,
-					updatedPlayer.getDust());
+			logger.info("Craft eseguito per {} Carta #{} craftata con successo da '{}'. Nuova polvere: {}.", cardId,
+					nickname, updatedPlayer.getDust());
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.CRAFT_OK, updatedPlayer);
 			return result;
 
@@ -340,6 +364,12 @@ public class DBManager {
 
 	public OperationResult<Player> disenchantCard(String nickname, int cardId, int disenchantValue) {
 		try {
+			if (nickname == null) {
+				logger.error("Disenchant fallito: nickname null.");
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+				return result;
+			}
+
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
