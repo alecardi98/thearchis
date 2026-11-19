@@ -71,7 +71,7 @@ public class Server implements Runnable {
 
 	private void dbConnection() {
 		dbManager = new DBManager();
-		dbManager.connect();
+		dbManager.dbConnect();
 	}
 
 	private void initializeClient(Socket socket) {
@@ -127,7 +127,7 @@ public class Server implements Runnable {
 		}
 
 		clientThreadPool.shutdown();
-		dbManager.close();
+		dbManager.dbClose();
 
 		logger.info("Server arrestato e risorse liberate.");
 	}
