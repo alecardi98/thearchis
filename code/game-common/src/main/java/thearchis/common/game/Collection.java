@@ -7,8 +7,10 @@ import java.util.Map;
 public class Collection implements Serializable {
 
 	private final Map<Integer, Integer> cards = new HashMap<>(); // cardId, quantity
+	private int dust;
 
-	public Collection() {
+	public Collection(int dust) {
+		this.dust = dust;
 	}
 
 	public void addCard(int cardId) {
@@ -35,4 +37,7 @@ public class Collection implements Serializable {
 		return cards.getOrDefault(cardId, 0);
 	}
 
+	public int getDust() {
+		return dust;
+	}
 }

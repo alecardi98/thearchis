@@ -183,6 +183,7 @@ class CollectionControllerTest {
 		Message message = new Message(MessageType.COLLECTION_REQUEST, new CollectionData());
 		collectionController.handleCollectionRequest(mockClientHandler, message);
 
+		verify(mockPlayer, never()).setCollection(any());
 		verify(mockClientHandler, never()).setClientState(ClientState.IN_COLLECTION);
 		verify(mockClientHandler).sendMessage(any(Message.class));
 	}
@@ -193,7 +194,7 @@ class CollectionControllerTest {
 		setupAuthenticatedUser();
 		when(mockServer.getDBManager()).thenReturn(mockDbManager);
 
-		Collection fakeCollection = new Collection();
+		Collection fakeCollection = new Collection(0);
 		when(mockDbManager.getUserCollection("AuthenticatedUser"))
 				.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, fakeCollection));
 
@@ -201,6 +202,7 @@ class CollectionControllerTest {
 
 		collectionController.handleCollectionRequest(mockClientHandler, message);
 
+		verify(mockPlayer).setCollection(fakeCollection);
 		verify(mockClientHandler).setClientState(ClientState.IN_COLLECTION);
 
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
@@ -346,13 +348,16 @@ class CollectionControllerTest {
 				"Deal damage", false);
 		when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-		Player updatedPlayer = new Player("AuthenticatedUser", 100, 200, new Collection(), null, 0, 0);
+		Collection updatedCollection = new Collection(200);
+		updatedCollection.addCard(101);
 		when(mockDbManager.craftCard("AuthenticatedUser", 101, validCard.getCraftCost()))
-				.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedPlayer));
+				.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedCollection));
 
 		Message message = new Message(MessageType.CRAFT_REQUEST, new CollectionData(101));
 
 		collectionController.handleCraftRequest(mockClientHandler, message);
+
+		verify(mockPlayer).setCollection(updatedCollection);
 
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 		verify(mockClientHandler).sendMessage(captor.capture());
@@ -362,7 +367,7 @@ class CollectionControllerTest {
 
 		OperationResult<?> result = (OperationResult<?>) response.getData();
 		assertEquals(OperationStatus.CRAFT_OK, result.getStatus());
-		assertEquals(updatedPlayer, result.getData());
+		assertEquals(updatedCollection, result.getData());
 	}
 
 	@Test
@@ -497,13 +502,15 @@ class CollectionControllerTest {
 				"Deal damage", false);
 		when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-		Player updatedPlayer = new Player("AuthenticatedUser", 100, 300, new Collection(), null, 0, 0);
+		Collection updatedCollection = new Collection(300);
 		when(mockDbManager.disenchantCard("AuthenticatedUser", 101, validCard.getDisenchantValue()))
-				.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedPlayer));
+				.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection));
 
 		Message message = new Message(MessageType.DISENCHANT_REQUEST, new CollectionData(101));
 
 		collectionController.handleDisenchantRequest(mockClientHandler, message);
+
+		verify(mockPlayer).setCollection(updatedCollection);
 
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 		verify(mockClientHandler).sendMessage(captor.capture());
@@ -513,7 +520,7 @@ class CollectionControllerTest {
 
 		OperationResult<?> result = (OperationResult<?>) response.getData();
 		assertEquals(OperationStatus.DISENCHANT_OK, result.getStatus());
-		assertEquals(updatedPlayer, result.getData());
+		assertEquals(updatedCollection, result.getData());
 	}
 
 }

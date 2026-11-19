@@ -231,7 +231,7 @@ class AuthenticationControllerTest {
 			mockedServer.when(Server::getInstance).thenReturn(mockServer);
 			when(mockServer.isUserAuthenticated("ValidUser")).thenReturn(false);
 
-			Player fakePlayer = new Player("ValidUser", 100, 50, new Collection(), null, 0, 0);
+			Player fakePlayer = new Player("ValidUser", 100, new Collection(50), null, 0, 0);
 			when(mockServer.getDBManager()).thenReturn(mockDbManager);
 			when(mockDbManager.loginUser("ValidUser", "Pass123"))
 					.thenReturn(new OperationResult<>(OperationStatus.LOGIN_OK, fakePlayer));

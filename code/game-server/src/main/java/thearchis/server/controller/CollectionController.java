@@ -7,7 +7,6 @@ import thearchis.common.card.Card;
 import thearchis.common.card.MasterSet;
 import thearchis.common.game.ClientState;
 import thearchis.common.game.Collection;
-import thearchis.common.game.Player;
 import thearchis.common.message.CollectionData;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
@@ -65,7 +64,8 @@ public class CollectionController {
 		OperationResult<Collection> result = server.getDBManager().getUserCollection(nickname);
 		OperationStatus status = result.getStatus();
 
-		if (status == OperationStatus.COLLECTION_OK) {
+		if (status == OperationStatus.COLLECTION_OK && result.getData() != null) {
+			clientHandler.getPlayer().setCollection(result.getData());
 			clientHandler.setClientState(ClientState.IN_COLLECTION);
 		}
 
@@ -79,7 +79,7 @@ public class CollectionController {
 
 		if (clientHandler.getPlayer() == null) {
 			logger.warn("Client #{} : richiesta craft rifiutata (player null).", clientId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
 			return;
 		}
@@ -88,14 +88,14 @@ public class CollectionController {
 		Server server = Server.getInstance();
 		if (!server.isUserAuthenticated(nickname)) {
 			logger.warn("Client #{} : richiesta craft rifiutata (utente {} non autenticato).", clientId, nickname);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
 			return;
 		}
 
 		if (!(msg.getData() instanceof CollectionData)) {
 			logger.warn("Client #{} : richiesta craft rifiutata (payload non di tipo CollectionData).", clientId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
 			return;
 		}
@@ -107,23 +107,23 @@ public class CollectionController {
 		if (card == null) {
 			logger.warn("Client #{} : richiesta craft fallita (carta #{} non trovata nel MasterSet).", clientId,
 					cardId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
 			return;
 		}
 
 		if (card.isConstrained()) {
 			logger.warn("Client #{} : richiesta craft rifiutata (carta #{} vincolata).", clientId, cardId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
 			return;
 		}
 
 		int craftCost = card.getCraftCost();
 
-		OperationResult<Player> result = server.getDBManager().craftCard(nickname, cardId, craftCost);
+		OperationResult<Collection> result = server.getDBManager().craftCard(nickname, cardId, craftCost);
 		if (result.getStatus() == OperationStatus.CRAFT_OK && result.getData() != null) {
-			clientHandler.setPlayer(result.getData());
+			clientHandler.getPlayer().setCollection(result.getData());
 		}
 
 		clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
@@ -138,7 +138,7 @@ public class CollectionController {
 
 		if (clientHandler.getPlayer() == null) {
 			logger.warn("Client #{} : richiesta disenchant rifiutata (utente non autenticato).", clientId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 			return;
 		}
@@ -147,14 +147,14 @@ public class CollectionController {
 		Server server = Server.getInstance();
 		if (!server.isUserAuthenticated(nickname)) {
 			logger.warn("Client #{} : richiesta disenchant rifiutata (utente {} non autenticato).", clientId, nickname);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 			return;
 		}
 
 		if (!(msg.getData() instanceof CollectionData)) {
 			logger.warn("Client #{} : richiesta disenchant rifiutata (payload non di tipo CollectionData).", clientId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 			return;
 		}
@@ -166,23 +166,23 @@ public class CollectionController {
 		if (card == null) {
 			logger.warn("Client #{} : richiesta disenchant fallita (carta #{} non trovata nel MasterSet).", clientId,
 					cardId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 			return;
 		}
 
 		if (card.isConstrained()) {
 			logger.warn("Client #{} : richiesta disenchant rifiutata (carta #{} vincolata).", clientId, cardId);
-			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 			return;
 		}
 
 		int disenchantValue = card.getDisenchantValue();
 
-		OperationResult<Player> result = server.getDBManager().disenchantCard(nickname, cardId, disenchantValue);
+		OperationResult<Collection> result = server.getDBManager().disenchantCard(nickname, cardId, disenchantValue);
 		if (result.getStatus() == OperationStatus.DISENCHANT_OK && result.getData() != null) {
-			clientHandler.setPlayer(result.getData());
+			clientHandler.getPlayer().setCollection(result.getData());
 		}
 
 		clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));

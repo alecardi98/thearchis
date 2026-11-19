@@ -199,7 +199,7 @@ class MessageDispatcherTest {
 		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
 			Server mockServer = mock(Server.class);
 			DBManager mockDbManager = mock(DBManager.class);
-			Player fakePlayer = new Player("ValidUser", 100, 50, new Collection(), null, 0, 0);
+			Player fakePlayer = new Player("ValidUser", 100, new Collection(50), null, 0, 0);
 
 			mockedServer.when(Server::getInstance).thenReturn(mockServer);
 			when(mockServer.getDBManager()).thenReturn(mockDbManager);
@@ -233,8 +233,9 @@ class MessageDispatcherTest {
 			when(mockPlayer.getNickname()).thenReturn("AuthUser");
 			when(mockServer.isUserAuthenticated("AuthUser")).thenReturn(true);
 
+			Collection fakeCollection = new Collection(50);
 			when(mockDbManager.getUserCollection("AuthUser"))
-					.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, new Collection()));
+					.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, fakeCollection));
 
 			when(mockClientHandler.getClientState()).thenReturn(ClientState.MAIN_MENU);
 
@@ -243,6 +244,7 @@ class MessageDispatcherTest {
 			messageDispatcher.dispatch(mockClientHandler, validCollectionMsg);
 
 			verify(mockDbManager).getUserCollection("AuthUser");
+			verify(mockPlayer).setCollection(fakeCollection);
 			verify(mockClientHandler).setClientState(ClientState.IN_COLLECTION);
 		}
 	}
@@ -270,9 +272,10 @@ class MessageDispatcherTest {
 					"Deal damage", false);
 			when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-			Player updatedPlayer = new Player("AuthUser", 100, 200, new Collection(), null, 0, 0);
+			Collection updatedCollection = new Collection(200);
+			updatedCollection.addCard(101);
 			when(mockDbManager.craftCard("AuthUser", 101, validCard.getCraftCost()))
-					.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedPlayer));
+					.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedCollection));
 
 			when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
 
@@ -281,6 +284,7 @@ class MessageDispatcherTest {
 			messageDispatcher.dispatch(mockClientHandler, validCraftMsg);
 
 			verify(mockDbManager).craftCard("AuthUser", 101, validCard.getCraftCost());
+			verify(mockPlayer).setCollection(updatedCollection);
 		}
 	}
 
@@ -307,9 +311,9 @@ class MessageDispatcherTest {
 					"Deal damage", false);
 			when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-			Player updatedPlayer = new Player("AuthUser", 100, 300, new Collection(), null, 0, 0);
+			Collection updatedCollection = new Collection(300);
 			when(mockDbManager.disenchantCard("AuthUser", 101, validCard.getDisenchantValue()))
-					.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedPlayer));
+					.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection));
 
 			when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
 
@@ -318,6 +322,7 @@ class MessageDispatcherTest {
 			messageDispatcher.dispatch(mockClientHandler, validDisenchantMsg);
 
 			verify(mockDbManager).disenchantCard("AuthUser", 101, validCard.getDisenchantValue());
+			verify(mockPlayer).setCollection(updatedCollection);
 		}
 	}
 

@@ -8,16 +8,14 @@ public class Player implements Serializable {
 
 	private String nickname;
 	private int coins;
-	private int dust;
 	private Collection collection;
 	private List<Deck> decks;
 	private int wins;
 	private int losses;
 
-	public Player(String nickname, int coins, int dust, Collection collection, List<Deck> decks, int wins, int losses) {
+	public Player(String nickname, int coins, Collection collection, List<Deck> decks, int wins, int losses) {
 		this.nickname = nickname;
 		this.coins = coins;
-		this.dust = dust;
 		this.collection = collection;
 		this.decks = (decks != null) ? decks : new ArrayList<>();
 		this.wins = wins;
@@ -40,14 +38,10 @@ public class Player implements Serializable {
 		this.collection = collection;
 	}
 
-	public int getDust() {
-		return dust;
-	}
-
 	public int getCoins() {
 		return coins;
 	}
-	
+
 	public Collection getCollection() {
 		return collection;
 	}

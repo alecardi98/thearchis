@@ -95,7 +95,7 @@ class DBManagerTest {
 	}
 
 	@Test
-	@DisplayName("Popola correttamente le carte vincolate nel sotto-documento collection")
+	@DisplayName("Popola correttamente dust e carte vincolate nel sotto-documento collection")
 	void testRegisterUserInitialCollection() {
 		OperationResult<Void> result = dbManager.registerUser("NewPlayer", "Pass123");
 
@@ -107,9 +107,13 @@ class DBManagerTest {
 		Document createdDoc = docCaptor.getValue();
 		assertEquals("NewPlayer", createdDoc.getString("nickname"));
 
-		Document initialCollection = (Document) createdDoc.get("collection");
+		Document initialCollection = createdDoc.get("collection", Document.class);
 		assertNotNull(initialCollection, "La collezione iniziale non deve essere null");
-		assertFalse(initialCollection.isEmpty(), "La collezione iniziale deve contenere le carte base");
+		assertEquals(0, initialCollection.getInteger("dust"));
+
+		Document initialCards = initialCollection.get("cards", Document.class);
+		assertNotNull(initialCards, "La mappa cards iniziale non deve essere null");
+		assertFalse(initialCards.isEmpty(), "La collezione iniziale deve contenere le carte base");
 	}
 
 	@Test
@@ -170,12 +174,12 @@ class DBManagerTest {
 	@Test
 	@DisplayName("Login eseguito con successo con parsing del Player")
 	void testLoginUserSuccess() {
-		Document fakeCollection = new Document().append("101", 2);
+		Document fakeCollection = new Document().append("dust", 50).append("cards", new Document().append("101", 2));
 		Document fakeDeckCards = new Document().append("101", 2);
 		Document fakeDeck = new Document().append("hero", HeroName.values()[0].name()).append("cards", fakeDeckCards);
 
 		Document fakeUserDoc = new Document().append("nickname", "ExistingPlayer").append("password", "CorrectPass")
-				.append("coins", 150).append("dust", 50).append("wins", 5).append("losses", 2)
+				.append("coins", 150).append("wins", 5).append("losses", 2)
 				.append("collection", fakeCollection).append("decks", List.of(fakeDeck));
 
 		when(mockFindIterable.first()).thenReturn(fakeUserDoc);
@@ -186,25 +190,31 @@ class DBManagerTest {
 		assertNotNull(result.getData());
 		assertEquals("ExistingPlayer", result.getData().getNickname());
 		assertEquals(150, result.getData().getCoins());
-		assertEquals(50, result.getData().getDust());
+		assertEquals(50, result.getData().getCollection().getDust());
 		assertEquals(2, result.getData().getCollection().getCardQuantity(101));
 	}
 
 	@Test
-	@DisplayName("Login restituisce DB_ERROR se il documento utente è corrotto (collection/decks mancanti o tipo errato)")
+	@DisplayName("Login restituisce DB_ERROR se il documento utente è corrotto (collection/cards/decks mancanti o tipo errato)")
 	void testLoginUserCorruptedDocument() {
 		Document missingCollectionDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
 				.append("decks", new ArrayList<>());
 
+		Document missingCardsDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
+				.append("collection", new Document().append("dust", 10)).append("decks", new ArrayList<>());
+
 		Document missingDecksDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
-				.append("collection", new Document());
+				.append("collection", new Document().append("dust", 10).append("cards", new Document()));
 
 		Document wrongTypeDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
-				.append("coins", "nonUnNumero").append("collection", new Document()).append("decks", new ArrayList<>());
+				.append("coins", "nonUnNumero")
+				.append("collection", new Document().append("dust", 10).append("cards", new Document()))
+				.append("decks", new ArrayList<>());
 
-		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(missingDecksDoc)
-				.thenReturn(wrongTypeDoc);
+		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(missingCardsDoc)
+				.thenReturn(missingDecksDoc).thenReturn(wrongTypeDoc);
 
+		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
 		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
 		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
 		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
@@ -225,7 +235,7 @@ class DBManagerTest {
 	void testCraftUserNotFound() {
 		when(mockFindIterable.first()).thenReturn(null);
 
-		OperationResult<Player> result = dbManager.craftCard("UnknownPlayer", 101, 100);
+		OperationResult<Collection> result = dbManager.craftCard("UnknownPlayer", 101, 100);
 
 		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
 		assertNull(result.getData());
@@ -235,11 +245,12 @@ class DBManagerTest {
 	@Test
 	@DisplayName("Craft fallito se la polvere è insufficiente")
 	void testCraftCardNotEnoughDust() {
-		Document fakeUserDoc = new Document().append("nickname", "PlayerOne").append("dust", 20);
+		Document fakeUserDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 20).append("cards", new Document()));
 
 		when(mockFindIterable.first()).thenReturn(fakeUserDoc);
 
-		OperationResult<Player> result = dbManager.craftCard("PlayerOne", 101, 100);
+		OperationResult<Collection> result = dbManager.craftCard("PlayerOne", 101, 100);
 
 		assertEquals(OperationStatus.NOT_ENOUGH_DUST, result.getStatus());
 		assertNull(result.getData());
@@ -249,32 +260,34 @@ class DBManagerTest {
 	@Test
 	@DisplayName("Craft eseguito con successo ed incremento quantità carta")
 	void testCraftCardSuccess() {
-		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 150).append("collection",
-				new Document());
+		Document initialDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 150).append("cards", new Document()));
 
-		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 50)
-				.append("collection", new Document().append("101", 1)).append("decks", new ArrayList<>());
+		Document updatedDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 50).append("cards", new Document().append("101", 1)));
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(updatedDoc);
 
-		OperationResult<Player> result = dbManager.craftCard("PlayerOne", 101, 100);
+		OperationResult<Collection> result = dbManager.craftCard("PlayerOne", 101, 100);
 
 		assertEquals(OperationStatus.CRAFT_OK, result.getStatus());
 		assertNotNull(result.getData());
 		assertEquals(50, result.getData().getDust());
+		assertEquals(1, result.getData().getCardQuantity(101));
 		verify(mockUsersCollection).updateOne(any(Bson.class), any(Bson.class));
 	}
 
 	@Test
 	@DisplayName("Craft restituisce DB_ERROR se il documento riletto post-update è corrotto")
 	void testCraftCardCorruptedPostUpdate() {
-		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 150).append("collection",
-				new Document());
-		Document corruptedUpdatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 50);
+		Document initialDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 150).append("cards", new Document()));
+		Document corruptedUpdatedDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 50));
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(corruptedUpdatedDoc);
 
-		OperationResult<Player> result = dbManager.craftCard("PlayerOne", 101, 100);
+		OperationResult<Collection> result = dbManager.craftCard("PlayerOne", 101, 100);
 
 		assertEquals(OperationStatus.DB_ERROR, result.getStatus());
 		assertNull(result.getData());
@@ -295,7 +308,7 @@ class DBManagerTest {
 	void testDisenchantUserNotFound() {
 		when(mockFindIterable.first()).thenReturn(null);
 
-		OperationResult<Player> result = dbManager.disenchantCard("UnknownPlayer", 101, 20);
+		OperationResult<Collection> result = dbManager.disenchantCard("UnknownPlayer", 101, 20);
 
 		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
 		assertNull(result.getData());
@@ -305,11 +318,12 @@ class DBManagerTest {
 	@Test
 	@DisplayName("Disenchant fallito se la carta non è posseduta nella collezione")
 	void testDisenchantCardNotOwned() {
-		Document fakeUserDoc = new Document().append("nickname", "PlayerOne").append("collection", new Document());
+		Document fakeUserDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 10).append("cards", new Document()));
 
 		when(mockFindIterable.first()).thenReturn(fakeUserDoc);
 
-		OperationResult<Player> result = dbManager.disenchantCard("PlayerOne", 101, 20);
+		OperationResult<Collection> result = dbManager.disenchantCard("PlayerOne", 101, 20);
 
 		assertEquals(OperationStatus.CARD_NOT_OWNED, result.getStatus());
 		assertNull(result.getData());
@@ -317,53 +331,56 @@ class DBManagerTest {
 	}
 
 	@Test
-	@DisplayName("Disenchant restituisce DB_ERROR se il campo collection manca nel documento")
+	@DisplayName("Disenchant restituisce DB_ERROR se il campo collection o cards manca nel documento")
 	void testDisenchantCorruptedDocument() {
 		Document missingCollectionDoc = new Document().append("nickname", "PlayerOne");
-		when(mockFindIterable.first()).thenReturn(missingCollectionDoc);
+		Document missingCardsDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 10));
 
-		OperationResult<Player> result = dbManager.disenchantCard("PlayerOne", 101, 20);
+		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(missingCardsDoc);
 
-		assertEquals(OperationStatus.DB_ERROR, result.getStatus());
-		assertNull(result.getData());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.disenchantCard("PlayerOne", 101, 20).getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.disenchantCard("PlayerOne", 101, 20).getStatus());
 		verify(mockUsersCollection, never()).updateOne(any(Bson.class), any(Bson.class));
 	}
 
 	@Test
 	@DisplayName("Disenchant di una carta con quantità > 1 (decrementa quantità)")
 	void testDisenchantCardDecrementQuantity() {
-		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 10).append("collection",
-				new Document().append("101", 2));
+		Document initialDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 10).append("cards", new Document().append("101", 2)));
 
-		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 30)
-				.append("collection", new Document().append("101", 1)).append("decks", new ArrayList<>());
+		Document updatedDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 30).append("cards", new Document().append("101", 1)));
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(updatedDoc);
 
-		OperationResult<Player> result = dbManager.disenchantCard("PlayerOne", 101, 20);
+		OperationResult<Collection> result = dbManager.disenchantCard("PlayerOne", 101, 20);
 
 		assertEquals(OperationStatus.DISENCHANT_OK, result.getStatus());
 		assertNotNull(result.getData());
 		assertEquals(30, result.getData().getDust());
+		assertEquals(1, result.getData().getCardQuantity(101));
 		verify(mockUsersCollection).updateOne(any(Bson.class), any(Bson.class));
 	}
 
 	@Test
 	@DisplayName("Disenchant di una carta con quantità = 1 (rimuove la chiave)")
 	void testDisenchantCardLastCopyUnset() {
-		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 10).append("collection",
-				new Document().append("101", 1));
+		Document initialDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 10).append("cards", new Document().append("101", 1)));
 
-		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 30)
-				.append("collection", new Document()).append("decks", new ArrayList<>());
+		Document updatedDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 30).append("cards", new Document()));
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(updatedDoc);
 
-		OperationResult<Player> result = dbManager.disenchantCard("PlayerOne", 101, 20);
+		OperationResult<Collection> result = dbManager.disenchantCard("PlayerOne", 101, 20);
 
 		assertEquals(OperationStatus.DISENCHANT_OK, result.getStatus());
 		assertNotNull(result.getData());
 		assertEquals(30, result.getData().getDust());
+		assertEquals(0, result.getData().getCardQuantity(101));
 		verify(mockUsersCollection).updateOne(any(Bson.class), any(Bson.class));
 	}
 
@@ -388,14 +405,17 @@ class DBManagerTest {
 	}
 
 	@Test
-	@DisplayName("GetUserCollection restituisce DB_ERROR se il campo collection manca o ha tipo errato")
+	@DisplayName("GetUserCollection restituisce DB_ERROR se il campo collection/cards manca o ha tipo errato")
 	void testGetUserCollectionCorruptedDocument() {
 		Document missingCollectionDoc = new Document().append("nickname", "PlayerOne");
-		Document wrongTypeCollectionDoc = new Document().append("nickname", "PlayerOne").append("collection",
-				"invalid");
+		Document wrongTypeCollectionDoc = new Document().append("nickname", "PlayerOne").append("collection", "invalid");
+		Document missingCardsDoc = new Document().append("nickname", "PlayerOne")
+				.append("collection", new Document().append("dust", 50));
 
-		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(wrongTypeCollectionDoc);
+		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(wrongTypeCollectionDoc)
+				.thenReturn(missingCardsDoc);
 
+		assertEquals(OperationStatus.DB_ERROR, dbManager.getUserCollection("PlayerOne").getStatus());
 		assertEquals(OperationStatus.DB_ERROR, dbManager.getUserCollection("PlayerOne").getStatus());
 		assertEquals(OperationStatus.DB_ERROR, dbManager.getUserCollection("PlayerOne").getStatus());
 	}
@@ -403,9 +423,10 @@ class DBManagerTest {
 	@Test
 	@DisplayName("Recupera con successo la collezione dell'utente")
 	void testGetUserCollectionSuccess() {
-		Document fakeCollectionDoc = new Document().append("101", 2).append("102", 1);
-		Document fakeUserDoc = new Document().append("nickname", "ExistingPlayer").append("dust", 75)
-				.append("collection", fakeCollectionDoc);
+		Document fakeCardsDoc = new Document().append("101", 2).append("102", 1);
+		Document fakeCollectionDoc = new Document().append("dust", 75).append("cards", fakeCardsDoc);
+		Document fakeUserDoc = new Document().append("nickname", "ExistingPlayer").append("collection",
+				fakeCollectionDoc);
 
 		when(mockFindIterable.first()).thenReturn(fakeUserDoc);
 
@@ -413,6 +434,7 @@ class DBManagerTest {
 
 		assertEquals(OperationStatus.COLLECTION_OK, result.getStatus());
 		assertNotNull(result.getData());
+		assertEquals(75, result.getData().getDust());
 		assertEquals(2, result.getData().getCardQuantity(101));
 		assertEquals(1, result.getData().getCardQuantity(102));
 	}
