@@ -1,5 +1,6 @@
 package thearchis.server.db;
 
+import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.WriteError;
 import com.mongodb.client.FindIterable;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import thearchis.common.game.Collection;
 import thearchis.common.game.Player;
+import thearchis.common.hero.HeroName;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 
@@ -26,6 +28,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class DBManagerTest {
@@ -64,11 +69,11 @@ class DBManagerTest {
 		assertEquals(OperationStatus.BAD_REQUEST, resultBothEmpty.getStatus());
 		assertNull(resultBothEmpty.getData());
 
-		OperationResult<Void> resultEmptyNick = dbManager.registerUser("", "psw");
+		OperationResult<Void> resultEmptyNick = dbManager.registerUser("   ", "psw");
 		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyNick.getStatus());
 		assertNull(resultEmptyNick.getData());
 
-		OperationResult<Void> resultEmptyPass = dbManager.registerUser("nick", "");
+		OperationResult<Void> resultEmptyPass = dbManager.registerUser("nick", "   ");
 		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyPass.getStatus());
 		assertNull(resultEmptyPass.getData());
 
@@ -86,6 +91,7 @@ class DBManagerTest {
 		OperationResult<Void> result = dbManager.registerUser("ExistingPlayer", "Pass123");
 
 		assertEquals(OperationStatus.NICKNAME_ALREADY_EXISTS, result.getStatus());
+		assertNull(result.getData());
 	}
 
 	@Test
@@ -125,11 +131,11 @@ class DBManagerTest {
 		assertEquals(OperationStatus.BAD_REQUEST, resultBothEmpty.getStatus());
 		assertNull(resultBothEmpty.getData());
 
-		OperationResult<Player> resultEmptyNick = dbManager.loginUser("", "psw");
+		OperationResult<Player> resultEmptyNick = dbManager.loginUser("   ", "psw");
 		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyNick.getStatus());
 		assertNull(resultEmptyNick.getData());
 
-		OperationResult<Player> resultEmptyPass = dbManager.loginUser("nick", "");
+		OperationResult<Player> resultEmptyPass = dbManager.loginUser("nick", "   ");
 		assertEquals(OperationStatus.BAD_REQUEST, resultEmptyPass.getStatus());
 		assertNull(resultEmptyPass.getData());
 
@@ -165,9 +171,12 @@ class DBManagerTest {
 	@DisplayName("Login eseguito con successo con parsing del Player")
 	void testLoginUserSuccess() {
 		Document fakeCollection = new Document().append("101", 2);
+		Document fakeDeckCards = new Document().append("101", 2);
+		Document fakeDeck = new Document().append("hero", HeroName.values()[0].name()).append("cards", fakeDeckCards);
+
 		Document fakeUserDoc = new Document().append("nickname", "ExistingPlayer").append("password", "CorrectPass")
 				.append("coins", 150).append("dust", 50).append("wins", 5).append("losses", 2)
-				.append("collection", fakeCollection);
+				.append("collection", fakeCollection).append("decks", List.of(fakeDeck));
 
 		when(mockFindIterable.first()).thenReturn(fakeUserDoc);
 
@@ -178,15 +187,34 @@ class DBManagerTest {
 		assertEquals("ExistingPlayer", result.getData().getNickname());
 		assertEquals(150, result.getData().getCoins());
 		assertEquals(50, result.getData().getDust());
+		assertEquals(2, result.getData().getCollection().getCardQuantity(101));
 	}
 
 	@Test
-	@DisplayName("Craft fallito per nickname null")
-	void testCraftNicknameNull() {
-		OperationResult<Player> result = dbManager.craftCard(null, 101, 100);
+	@DisplayName("Login restituisce DB_ERROR se il documento utente è corrotto (collection/decks mancanti o tipo errato)")
+	void testLoginUserCorruptedDocument() {
+		Document missingCollectionDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
+				.append("decks", new ArrayList<>());
 
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-		assertNull(result.getData());
+		Document missingDecksDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
+				.append("collection", new Document());
+
+		Document wrongTypeDoc = new Document().append("nickname", "PlayerOne").append("password", "Pass123")
+				.append("coins", "nonUnNumero").append("collection", new Document()).append("decks", new ArrayList<>());
+
+		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(missingDecksDoc)
+				.thenReturn(wrongTypeDoc);
+
+		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
+	}
+
+	@Test
+	@DisplayName("Craft fallito per nickname null o vuoto")
+	void testCraftInvalidNickname() {
+		assertEquals(OperationStatus.BAD_REQUEST, dbManager.craftCard(null, 101, 100).getStatus());
+		assertEquals(OperationStatus.BAD_REQUEST, dbManager.craftCard("   ", 101, 100).getStatus());
 
 		verify(mockUsersCollection, never()).find(any(Bson.class));
 		verify(mockUsersCollection, never()).updateOne(any(Bson.class), any(Bson.class));
@@ -224,8 +252,8 @@ class DBManagerTest {
 		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 150).append("collection",
 				new Document());
 
-		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 50).append("collection",
-				new Document().append("101", 1));
+		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 50)
+				.append("collection", new Document().append("101", 1)).append("decks", new ArrayList<>());
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(updatedDoc);
 
@@ -238,12 +266,25 @@ class DBManagerTest {
 	}
 
 	@Test
-	@DisplayName("Disenchant fallito per nickname null")
-	void testDisenchantNicknameNull() {
-		OperationResult<Player> result = dbManager.disenchantCard(null, 101, 20);
+	@DisplayName("Craft restituisce DB_ERROR se il documento riletto post-update è corrotto")
+	void testCraftCardCorruptedPostUpdate() {
+		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 150).append("collection",
+				new Document());
+		Document corruptedUpdatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 50);
 
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
+		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(corruptedUpdatedDoc);
+
+		OperationResult<Player> result = dbManager.craftCard("PlayerOne", 101, 100);
+
+		assertEquals(OperationStatus.DB_ERROR, result.getStatus());
 		assertNull(result.getData());
+	}
+
+	@Test
+	@DisplayName("Disenchant fallito per nickname null o vuoto")
+	void testDisenchantInvalidNickname() {
+		assertEquals(OperationStatus.BAD_REQUEST, dbManager.disenchantCard(null, 101, 20).getStatus());
+		assertEquals(OperationStatus.BAD_REQUEST, dbManager.disenchantCard("   ", 101, 20).getStatus());
 
 		verify(mockUsersCollection, never()).find(any(Bson.class));
 		verify(mockUsersCollection, never()).updateOne(any(Bson.class), any(Bson.class));
@@ -276,13 +317,26 @@ class DBManagerTest {
 	}
 
 	@Test
+	@DisplayName("Disenchant restituisce DB_ERROR se il campo collection manca nel documento")
+	void testDisenchantCorruptedDocument() {
+		Document missingCollectionDoc = new Document().append("nickname", "PlayerOne");
+		when(mockFindIterable.first()).thenReturn(missingCollectionDoc);
+
+		OperationResult<Player> result = dbManager.disenchantCard("PlayerOne", 101, 20);
+
+		assertEquals(OperationStatus.DB_ERROR, result.getStatus());
+		assertNull(result.getData());
+		verify(mockUsersCollection, never()).updateOne(any(Bson.class), any(Bson.class));
+	}
+
+	@Test
 	@DisplayName("Disenchant di una carta con quantità > 1 (decrementa quantità)")
 	void testDisenchantCardDecrementQuantity() {
 		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 10).append("collection",
 				new Document().append("101", 2));
 
-		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 30).append("collection",
-				new Document().append("101", 1));
+		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 30)
+				.append("collection", new Document().append("101", 1)).append("decks", new ArrayList<>());
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(updatedDoc);
 
@@ -300,8 +354,8 @@ class DBManagerTest {
 		Document initialDoc = new Document().append("nickname", "PlayerOne").append("dust", 10).append("collection",
 				new Document().append("101", 1));
 
-		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 30).append("collection",
-				new Document());
+		Document updatedDoc = new Document().append("nickname", "PlayerOne").append("dust", 30)
+				.append("collection", new Document()).append("decks", new ArrayList<>());
 
 		when(mockFindIterable.first()).thenReturn(initialDoc).thenReturn(updatedDoc);
 
@@ -314,12 +368,10 @@ class DBManagerTest {
 	}
 
 	@Test
-	@DisplayName("Collezione non cercata se nickname null")
-	void testGetUserCollectionNullNickname() {
-		OperationResult<Collection> result = dbManager.getUserCollection(null);
-
-		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
-		assertNull(result.getData());
+	@DisplayName("Collezione non cercata se nickname null o vuoto")
+	void testGetUserCollectionInvalidNickname() {
+		assertEquals(OperationStatus.BAD_REQUEST, dbManager.getUserCollection(null).getStatus());
+		assertEquals(OperationStatus.BAD_REQUEST, dbManager.getUserCollection("   ").getStatus());
 
 		verify(mockUsersCollection, never()).find(any(Bson.class));
 	}
@@ -336,11 +388,24 @@ class DBManagerTest {
 	}
 
 	@Test
+	@DisplayName("GetUserCollection restituisce DB_ERROR se il campo collection manca o ha tipo errato")
+	void testGetUserCollectionCorruptedDocument() {
+		Document missingCollectionDoc = new Document().append("nickname", "PlayerOne");
+		Document wrongTypeCollectionDoc = new Document().append("nickname", "PlayerOne").append("collection",
+				"invalid");
+
+		when(mockFindIterable.first()).thenReturn(missingCollectionDoc).thenReturn(wrongTypeCollectionDoc);
+
+		assertEquals(OperationStatus.DB_ERROR, dbManager.getUserCollection("PlayerOne").getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.getUserCollection("PlayerOne").getStatus());
+	}
+
+	@Test
 	@DisplayName("Recupera con successo la collezione dell'utente")
 	void testGetUserCollectionSuccess() {
 		Document fakeCollectionDoc = new Document().append("101", 2).append("102", 1);
-		Document fakeUserDoc = new Document().append("nickname", "ExistingPlayer").append("collection",
-				fakeCollectionDoc);
+		Document fakeUserDoc = new Document().append("nickname", "ExistingPlayer").append("dust", 75)
+				.append("collection", fakeCollectionDoc);
 
 		when(mockFindIterable.first()).thenReturn(fakeUserDoc);
 
@@ -348,5 +413,20 @@ class DBManagerTest {
 
 		assertEquals(OperationStatus.COLLECTION_OK, result.getStatus());
 		assertNotNull(result.getData());
+		assertEquals(2, result.getData().getCardQuantity(101));
+		assertEquals(1, result.getData().getCardQuantity(102));
+	}
+
+	@Test
+	@DisplayName("Gestisce MongoException restituendo DB_ERROR su tutte le operazioni")
+	void testMongoExceptionReturnsDbError() {
+		doThrow(new MongoException("Write failed")).when(mockUsersCollection).insertOne(any(Document.class));
+		when(mockUsersCollection.find(any(Bson.class))).thenThrow(new MongoException("Connection lost"));
+
+		assertEquals(OperationStatus.DB_ERROR, dbManager.registerUser("PlayerOne", "Pass123").getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.loginUser("PlayerOne", "Pass123").getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.getUserCollection("PlayerOne").getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.craftCard("PlayerOne", 101, 100).getStatus());
+		assertEquals(OperationStatus.DB_ERROR, dbManager.disenchantCard("PlayerOne", 101, 20).getStatus());
 	}
 }

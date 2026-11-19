@@ -173,6 +173,21 @@ class CollectionControllerTest {
 	}
 
 	@Test
+	@DisplayName("Non aggiorna stato client a IN_COLLECTION se DB restituisce DB_ERROR")
+	void testHandleCollectionRequestDbError() {
+		setupAuthenticatedUser();
+		when(mockServer.getDBManager()).thenReturn(mockDbManager);
+		when(mockDbManager.getUserCollection("AuthenticatedUser"))
+				.thenReturn(new OperationResult<>(OperationStatus.DB_ERROR, null));
+
+		Message message = new Message(MessageType.COLLECTION_REQUEST, new CollectionData());
+		collectionController.handleCollectionRequest(mockClientHandler, message);
+
+		verify(mockClientHandler, never()).setClientState(ClientState.IN_COLLECTION);
+		verify(mockClientHandler).sendMessage(any(Message.class));
+	}
+
+	@Test
 	@DisplayName("Accetta COLLECTION_REQUEST e aggiorna stato client a IN_COLLECTION")
 	void testHandleCollectionRequestSuccess() {
 		setupAuthenticatedUser();

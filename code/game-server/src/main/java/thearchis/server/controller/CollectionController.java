@@ -23,10 +23,6 @@ public class CollectionController {
 	public CollectionController() {
 	}
 
-	/*
-	 * Gestisce COLLECTION_REQUEST per l'apertura dell'interfaccia 'collezione':
-	 * invia al client la Collection
-	 */
 	public void handleCollectionRequest(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
 		logger.info("Client #{} : ricevuta richiesta di collezione.", clientId);
@@ -77,10 +73,6 @@ public class CollectionController {
 		logger.info("Client #{} : esito collezione inviato (status '{}')", clientId, status);
 	}
 
-	/*
-	 * Gestisce CRAFT_REQUEST per il craft delle carte: invia al client il Player
-	 * aggiornato
-	 */
 	public void handleCraftRequest(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
 		logger.info("Client #{} : ricevuta richiesta di craft.", clientId);
@@ -130,22 +122,22 @@ public class CollectionController {
 		int craftCost = card.getCraftCost();
 
 		OperationResult<Player> result = server.getDBManager().craftCard(nickname, cardId, craftCost);
+		if (result.getStatus() == OperationStatus.CRAFT_OK && result.getData() != null) {
+			clientHandler.setPlayer(result.getData());
+		}
+
 		clientHandler.sendMessage(new Message(MessageType.CRAFT_RESPONSE, result));
 
 		OperationStatus status = result.getStatus();
 		logger.info("Client #{} : esito craft per carta #{} inviato (status {}).", clientId, cardId, status);
 	}
 
-	/*
-	 * Gestisce DISENCHANT_REQUEST per il disenchant delle carte: invia al client il
-	 * Player aggiornato
-	 */
 	public void handleDisenchantRequest(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
 		logger.info("Client #{} : ricevuta richiesta di disenchant.", clientId);
 
 		if (clientHandler.getPlayer() == null) {
-			logger.warn("Client #{}: richiesta disenchant rifiutata (utente non autenticato).", clientId);
+			logger.warn("Client #{} : richiesta disenchant rifiutata (utente non autenticato).", clientId);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 			return;
@@ -189,6 +181,10 @@ public class CollectionController {
 		int disenchantValue = card.getDisenchantValue();
 
 		OperationResult<Player> result = server.getDBManager().disenchantCard(nickname, cardId, disenchantValue);
+		if (result.getStatus() == OperationStatus.DISENCHANT_OK && result.getData() != null) {
+			clientHandler.setPlayer(result.getData());
+		}
+
 		clientHandler.sendMessage(new Message(MessageType.DISENCHANT_RESPONSE, result));
 
 		OperationStatus status = result.getStatus();

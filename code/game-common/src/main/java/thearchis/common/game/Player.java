@@ -47,4 +47,8 @@ public class Player implements Serializable {
 	public int getCoins() {
 		return coins;
 	}
+	
+	public Collection getCollection() {
+		return collection;
+	}
 }

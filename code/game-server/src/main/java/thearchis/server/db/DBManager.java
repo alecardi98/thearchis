@@ -17,9 +17,11 @@ import thearchis.common.card.MasterSet;
 import thearchis.common.game.Collection;
 import thearchis.common.game.Deck;
 import thearchis.common.game.Player;
+import thearchis.common.hero.HeroName;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -132,11 +134,11 @@ public class DBManager {
 
 			Document newUser = new Document().append("nickname", nickname).append("password", password)
 					.append("coins", 100).append("dust", 0).append("wins", 0).append("losses", 0)
-					.append("collection", initialCollection).append("decks", new java.util.ArrayList<>());
+					.append("collection", initialCollection).append("decks", new ArrayList<>());
 
 			users.insertOne(newUser);
 
-			logger.info("Registrazione : Utente {} : Nuovo account e profilo inizializzati con successo.", nickname);
+			logger.info("Registrazione : Utente {} : Nuovo account inizializzato con successo.", nickname);
 
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.REGISTER_OK, null);
 			return result;
@@ -170,15 +172,27 @@ public class DBManager {
 			MongoCollection<Document> users = database.getCollection(USERS_COLLECTION);
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
-			if (userDoc == null || !password.equals(userDoc.getString("password"))) {
+			if (userDoc == null) {
+				logger.warn("Login : Utente {} : Login fallito (utente non trovato).", nickname);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.INVALID_CREDENTIALS, null);
+				return result;
+			}
+
+			if (!password.equals(userDoc.getString("password"))) {
 				logger.warn("Login : Utente {} : Login fallito (credenziali errate).", nickname);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.INVALID_CREDENTIALS, null);
 				return result;
 			}
 
+			Player player = parsePlayerFromDocument(userDoc);
+			if (player == null) {
+				logger.warn("Login : Utente {} : Errore durante la creazione di Player.", nickname);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+				return result;
+			}
+
 			logger.info("Login : Utente {} : Login eseguito con successo.", nickname);
 
-			Player player = parsePlayerFromDocument(userDoc);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.LOGIN_OK, player);
 			return result;
 
@@ -190,30 +204,64 @@ public class DBManager {
 	}
 
 	private Player parsePlayerFromDocument(Document userDoc) {
-		if (userDoc == null) {
+		try {
+			String nickname = userDoc.getString("nickname");
+			if (nickname == null || nickname.isBlank()) {
+				logger.error("parsePlayer: Documento utente corrotto ('nickname' mancante o vuoto).");
+				return null;
+			}
+
+			Document collectionDoc = userDoc.get("collection", Document.class);
+			if (collectionDoc == null) {
+				logger.error("parsePlayer: Utente {} : Documento corrotto ('collection' mancante).", nickname);
+				return null;
+			}
+
+			List<Document> decksDocList = userDoc.getList("decks", Document.class);
+			if (decksDocList == null) {
+				logger.error("parsePlayer: Utente {} : Documento corrotto ('decks' mancante).", nickname);
+				return null;
+			}
+
+			int coins = userDoc.getInteger("coins", 0);
+			int dust = userDoc.getInteger("dust", 0);
+			int wins = userDoc.getInteger("wins", 0);
+			int losses = userDoc.getInteger("losses", 0);
+
+			Collection collection = parseCollectionFromDocument(collectionDoc);
+			List<Deck> decks = parseDecksFromDocumentList(decksDocList);
+
+			return new Player(nickname, coins, dust, collection, decks, wins, losses);
+
+		} catch (ClassCastException | IllegalArgumentException e) {
+			logger.error("parsePlayer: Errore di parsing/tipo nel documento utente ({}).", e.getMessage());
 			return null;
 		}
+	}
 
-		String nickname = userDoc.getString("nickname");
-		int coins = userDoc.getInteger("coins", 0);
-		int dust = userDoc.getInteger("dust", 0);
-		int wins = userDoc.getInteger("wins", 0);
-		int losses = userDoc.getInteger("losses", 0);
-
-		Document collectionDoc = userDoc.get("collection", Document.class);
-		Collection collection = parseCollectionFromDocument(collectionDoc);
-
-		List<Document> decksDocList = userDoc.getList("decks", Document.class);
-		List<Deck> decks = parseDecksFromDocumentList(decksDocList);
-
-		Player player = new Player(nickname, coins, dust, collection, decks, wins, losses);
-		return player;
+	private Collection parseCollectionFromDocument(Document collectionDoc) {
+		Collection collection = new Collection();
+		for (Map.Entry<String, Object> entry : collectionDoc.entrySet()) {
+			try {
+				int cardId = Integer.parseInt(entry.getKey());
+				int quantity = collectionDoc.getInteger(entry.getKey(), 0);
+				for (int i = 0; i < quantity; i++) {
+					collection.addCard(cardId);
+				}
+			} catch (NumberFormatException e) {
+				logger.warn("parseCollection : ID carta #{} non valido nella collezione.", entry.getKey());
+			} catch (ClassCastException e) {
+				logger.warn("parseCollection: Valore quantità {} per carta #{} non valido.", entry.getValue(),
+						entry.getKey());
+			}
+		}
+		return collection;
 	}
 
 	private List<Deck> parseDecksFromDocumentList(List<Document> decksDocList) {
-		List<Deck> decks = new java.util.ArrayList<>();
+		List<Deck> decks = new ArrayList<>();
 
-		if (decksDocList == null || decksDocList.isEmpty()) {
+		if (decksDocList.isEmpty()) {
 			return decks;
 		}
 
@@ -225,46 +273,52 @@ public class DBManager {
 			try {
 				String heroStr = deckDoc.getString("hero");
 				if (heroStr == null || heroStr.isBlank()) {
-					logger.warn("Mazzo scartato: HeroName non specificato nel documento.");
+					logger.warn("parseDeck : HeroName del mazzo non specificato.");
 					continue;
 				}
 
-				thearchis.common.hero.HeroName hero = thearchis.common.hero.HeroName.valueOf(heroStr);
+				HeroName hero = HeroName.valueOf(heroStr);
 				Deck deck = new Deck(hero);
 
 				Document cardsDoc = deckDoc.get("cards", Document.class);
-				if (cardsDoc != null) {
-					for (Map.Entry<String, Object> entry : cardsDoc.entrySet()) {
-						try {
-							int cardId = Integer.parseInt(entry.getKey());
-							int quantity = cardsDoc.getInteger(entry.getKey(), 0);
+				if (cardsDoc == null) {
+					logger.warn("parseDeck : Mazzo {} : mazzo vuoto.", heroStr);
+					continue;
+				}
 
-							if (quantity > 0) {
-								deck.addCard(cardId, quantity);
-							}
-						} catch (NumberFormatException e) {
-							logger.warn("ID carta non valido nel mazzo: '{}'", entry.getKey());
-						} catch (ClassCastException e) {
-							logger.warn("Quantità carta non valida nel mazzo per ID '{}'", entry.getKey());
+				for (Map.Entry<String, Object> entry : cardsDoc.entrySet()) {
+					try {
+						int cardId = Integer.parseInt(entry.getKey());
+						int quantity = cardsDoc.getInteger(entry.getKey(), 0);
+
+						if (quantity > 0) {
+							deck.addCard(cardId, quantity);
 						}
+					} catch (NumberFormatException e) {
+						logger.warn("parseDeck : Mazzo {} : ID carta #{} non valido.", heroStr, entry.getKey());
+					} catch (ClassCastException e) {
+						logger.warn("parseDeck : Mazzo {} : Quantità {} non valida per carta #{}.", heroStr,
+								entry.getValue(), entry.getKey());
 					}
 				}
 				decks.add(deck);
 
 			} catch (IllegalArgumentException e) {
-				logger.warn("HeroName non valido durante il parsing del mazzo: '{}'", deckDoc.getString("hero"));
+				logger.warn("parseDeck : HeroName {} non valido.", deckDoc.getString("hero"));
 			} catch (Exception e) {
-				logger.error("Errore imprevisto durante il parsing di un mazzo: {}", e.getMessage());
+				logger.error("parseDeck : Errore imprevisto durante il parsing di un mazzo ({}).", e.getMessage());
 			}
 		}
-
 		return decks;
 	}
 
+	/*
+	 * - Recupero dei dati della collezione
+	 */
 	public OperationResult<Collection> getUserCollection(String nickname) {
 		try {
-			if (nickname == null) {
-				logger.warn("Collection : Recupero collezione fallito (nickname null).");
+			if (nickname == null || nickname.isBlank()) {
+				logger.warn("Collection : Recupero collezione fallito (nickname null o vuoto).");
 				OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
@@ -273,54 +327,39 @@ public class DBManager {
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
-				logger.warn("Nickname {} : recupero collezione fallito (utente non trovato).", nickname);
+				logger.warn("Collection : Utente {} : recupero collezione fallito (utente non trovato).", nickname);
 				OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
 			Document collectionDoc = userDoc.get("collection", Document.class);
+			if (collectionDoc == null) {
+				logger.error("Collection : Utente {} : Documento corrotto ('collection' mancante).", nickname);
+				return new OperationResult<>(OperationStatus.DB_ERROR, null);
+			}
 			Collection collection = parseCollectionFromDocument(collectionDoc);
 
-			logger.info("Collezione recuperata con successo per l'utente {}.", nickname);
+			logger.info("Collection : Utente {} : Collezione recuperata con successo.", nickname);
 			OperationResult<Collection> result = new OperationResult<>(OperationStatus.COLLECTION_OK, collection);
 			return result;
 
+		} catch (ClassCastException e) {
+			logger.error("Collection : Utente {} : Documento corrotto (tipo 'collection' o 'dust' non valido).",
+					nickname);
+			OperationResult<Collection> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+			return result;
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante il recupero della collezione per {} ({})", nickname, e.getMessage());
+			logger.error("Collection : Utente {} : Errore MongoDB durante il recupero della collezione ({}).", nickname,
+					e.getMessage());
 			OperationResult<Collection> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
 	}
 
-	private Collection parseCollectionFromDocument(Document collectionDoc) {
-		Collection collection = new Collection();
-
-		if (collectionDoc == null) {
-			return collection;
-		}
-
-		for (Map.Entry<String, Object> entry : collectionDoc.entrySet()) {
-			try {
-				int cardId = Integer.parseInt(entry.getKey());
-				int quantity = collectionDoc.getInteger(entry.getKey(), 0);
-
-				for (int i = 0; i < quantity; i++) {
-					collection.addCard(cardId);
-				}
-
-			} catch (NumberFormatException e) {
-				logger.warn("ID carta non valido nella collezione: '{}'", entry.getKey());
-			} catch (ClassCastException e) {
-				logger.warn("Valore quantità non valido per la carta '{}'", entry.getKey());
-			}
-		}
-		return collection;
-	}
-
 	public OperationResult<Player> craftCard(String nickname, int cardId, int craftCost) {
 		try {
-			if (nickname == null) {
-				logger.error("Craft fallito: nickname null.");
+			if (nickname == null || nickname.isBlank()) {
+				logger.error("Craft: Craft fallito (nickname null o vuoto).");
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
@@ -329,15 +368,16 @@ public class DBManager {
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
-				logger.warn("Craft fallito per '{}: utente non trovato nel DB.", nickname);
+				logger.warn("Craft : Utente {} : Craft fallito (utente non trovato nel DB).", nickname);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
 			int currentDust = userDoc.getInteger("dust", 0);
 			if (currentDust < craftCost) {
-				logger.warn("Craft fallito per {}: polvere insufficiente (richiesta: {}, posseduta: {}).", nickname,
-						craftCost, currentDust);
+				logger.warn(
+						"Craft : Utente {} : Craft fallito (polvere insufficiente (richiesta: {} , posseduta: {})).",
+						nickname, craftCost, currentDust);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.NOT_ENOUGH_DUST, null);
 				return result;
 			}
@@ -348,14 +388,23 @@ public class DBManager {
 
 			Document updatedUserDoc = users.find(Filters.eq("nickname", nickname)).first();
 			Player updatedPlayer = parsePlayerFromDocument(updatedUserDoc);
+			if (updatedPlayer == null) {
+				logger.error("Craft : Utente {} : Errore durante il parsing del Player post-craft.", nickname);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+				return result;
+			}
 
-			logger.info("Craft eseguito per {} Carta #{} craftata con successo da '{}'. Nuova polvere: {}.", cardId,
-					nickname, updatedPlayer.getDust());
+			logger.info("Craft : Utente {} : Carta #{} craftata con successo (nuova polvere: {}).", nickname, cardId,
+					updatedPlayer.getDust());
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.CRAFT_OK, updatedPlayer);
 			return result;
 
+		} catch (ClassCastException e) {
+			logger.error("Craft : Utente {} : Documento corrotto (tipo 'dust' non valido).", nickname);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+			return result;
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante il craft della carta #{} per '{}' ({}).", cardId, nickname,
+			logger.error("Craft : Utente {} : Errore MongoDB durante il craft della carta #{} ({}).", nickname, cardId,
 					e.getMessage());
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
@@ -364,8 +413,8 @@ public class DBManager {
 
 	public OperationResult<Player> disenchantCard(String nickname, int cardId, int disenchantValue) {
 		try {
-			if (nickname == null) {
-				logger.error("Disenchant fallito: nickname null.");
+			if (nickname == null || nickname.isBlank()) {
+				logger.error("Disenchant : Disenchant fallito (nickname null o vuoto).");
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
@@ -374,45 +423,55 @@ public class DBManager {
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
-				logger.warn("Disenchant fallito: utente '{}' non trovato nel DB.", nickname);
+				logger.warn("Disenchant : Utente {} : Disenchant fallito (utente non trovato nel DB).", nickname);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
 
 			Document collectionDoc = userDoc.get("collection", Document.class);
-			String cardIdKey = String.valueOf(cardId);
+			if (collectionDoc == null) {
+				logger.error("Disenchant : Utente {} : Documento corrotto ('collection' mancante).", nickname);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+				return result;
+			}
 
-			int currentQuantity = (collectionDoc != null) ? collectionDoc.getInteger(cardIdKey, 0) : 0;
+			String cardIdKey = String.valueOf(cardId);
+			int currentQuantity = collectionDoc.getInteger(cardIdKey, 0);
 
 			if (currentQuantity <= 0) {
-				logger.warn("Disenchant fallito per '{}': carta #{} non posseduta o quantità insufficiente.", nickname,
-						cardId);
+				logger.warn("Disenchant : Utente {} : Disenchant fallito (carta #{} non posseduta).", nickname, cardId);
 				OperationResult<Player> result = new OperationResult<>(OperationStatus.CARD_NOT_OWNED, null);
 				return result;
 			}
 
 			String fieldPath = "collection." + cardIdKey;
-			Bson updateQuery;
-
-			if (currentQuantity == 1) {
-				updateQuery = Updates.combine(Updates.inc("dust", disenchantValue), Updates.unset(fieldPath));
-			} else {
-				updateQuery = Updates.combine(Updates.inc("dust", disenchantValue), Updates.inc(fieldPath, -1));
-			}
+			Bson updateQuery = (currentQuantity == 1)
+					? Updates.combine(Updates.inc("dust", disenchantValue), Updates.unset(fieldPath))
+					: Updates.combine(Updates.inc("dust", disenchantValue), Updates.inc(fieldPath, -1));
 
 			users.updateOne(Filters.eq("nickname", nickname), updateQuery);
 
 			Document updatedUserDoc = users.find(Filters.eq("nickname", nickname)).first();
 			Player updatedPlayer = parsePlayerFromDocument(updatedUserDoc);
+			if (updatedPlayer == null) {
+				logger.error("Disenchant : Utente {} : Errore durante il parsing del Player post-disenchant.",
+						nickname);
+				OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+				return result;
+			}
 
-			logger.info("Carta #{} disincantata con successo da '{}'. Nuova polvere: {}.", cardId, nickname,
-					updatedPlayer.getDust());
+			logger.info("Disenchant : Utente {} : Carta #{} disincantata con successo (Nuova polvere: {}).", nickname,
+					cardId, updatedPlayer.getDust());
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedPlayer);
 			return result;
 
+		} catch (ClassCastException e) {
+			logger.error("Disenchant : Utente {} : Documento corrotto (tipo non valido nel documento).", nickname);
+			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
+			return result;
 		} catch (MongoException e) {
-			logger.error("Errore MongoDB durante il disenchant della carta #{} per '{}' ({}).", cardId, nickname,
-					e.getMessage());
+			logger.error("Disenchant : Utente {} : Errore MongoDB durante il disenchant della carta #{} ({}).",
+					nickname, cardId, e.getMessage());
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.DB_ERROR, null);
 			return result;
 		}
