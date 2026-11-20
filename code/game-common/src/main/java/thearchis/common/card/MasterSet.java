@@ -55,13 +55,23 @@ public class MasterSet {
 							: -1;
 
 					try {
-						String name = obj.has("name") ? obj.get("name").getAsString() : null;
-						int manaCost = obj.has("manaCost") ? obj.get("manaCost").getAsInt() : -1;
-						CardType type = obj.has("type") ? CardType.valueOf(obj.get("type").getAsString()) : null;
-						CardRarity rarity = obj.has("rarity") ? CardRarity.valueOf(obj.get("rarity").getAsString())
+						String name = obj.has("name") && !obj.get("name").isJsonNull() ? obj.get("name").getAsString()
 								: null;
-						HeroName hero = obj.has("hero") ? HeroName.valueOf(obj.get("hero").getAsString()) : null;
-						String description = obj.has("description") ? obj.get("description").getAsString() : "";
+						int manaCost = obj.has("manaCost") && !obj.get("manaCost").isJsonNull()
+								? obj.get("manaCost").getAsInt()
+								: -1;
+						CardType type = obj.has("type") && !obj.get("type").isJsonNull()
+								? CardType.valueOf(obj.get("type").getAsString())
+								: null;
+						CardRarity rarity = obj.has("rarity") && !obj.get("rarity").isJsonNull()
+								? CardRarity.valueOf(obj.get("rarity").getAsString())
+								: null;
+						HeroName hero = obj.has("hero") && !obj.get("hero").isJsonNull()
+								? HeroName.valueOf(obj.get("hero").getAsString())
+								: null;
+						String description = obj.has("description") && !obj.get("description").isJsonNull()
+								? obj.get("description").getAsString()
+								: "";
 
 						Boolean constrained = null;
 						if (obj.has("constrained") && obj.get("constrained").isJsonPrimitive()
@@ -69,43 +79,46 @@ public class MasterSet {
 							constrained = obj.get("constrained").getAsBoolean();
 						}
 
+						if (type == null) {
+							throw new IllegalArgumentException("Card : type non può essere null.");
+						}
+
 						Card card = null;
 
-						if (type != null) {
-							switch (type) {
-							case CREATURE:
-								CreatureSubtype subtype = obj.has("subtype")
-										? CreatureSubtype.valueOf(obj.get("subtype").getAsString())
-										: null;
-								int atk = obj.has("atk") ? obj.get("atk").getAsInt() : -1;
-								int def = obj.has("def") ? obj.get("def").getAsInt() : -1;
+						switch (type) {
+						case CREATURE:
+							CreatureSubtype subtype = obj.has("subtype") && !obj.get("subtype").isJsonNull()
+									? CreatureSubtype.valueOf(obj.get("subtype").getAsString())
+									: null;
+							int atk = obj.has("atk") && !obj.get("atk").isJsonNull() ? obj.get("atk").getAsInt() : -1;
+							int def = obj.has("def") && !obj.get("def").isJsonNull() ? obj.get("def").getAsInt() : -1;
 
-								card = new Creature(id, name, manaCost, type, rarity, hero, description, constrained,
-										subtype, atk, def);
-								break;
+							card = new Creature(id, name, manaCost, type, rarity, hero, description, constrained,
+									subtype, atk, def);
+							break;
 
-							case SPELL:
-								card = new Spell(id, name, manaCost, type, rarity, hero, description, constrained);
-								break;
-							}
+						case SPELL:
+							card = new Spell(id, name, manaCost, type, rarity, hero, description, constrained);
+							break;
 						}
+
+						if (cardsMap.containsKey(card.getId())) {
+							throw new IllegalArgumentException("ID carta duplicato: " + card.getId() + ".");
+						}
+
 						cardsMap.put(card.getId(), card);
 
-					} catch (InvalidCardDataException e) {
-						throw e;
 					} catch (Exception e) {
-						throw new InvalidCardDataException(id, "Formato JSON non valido: " + e.getMessage() + ".");
+						throw new IllegalArgumentException(
+								"Errore nel parsing della carta con id " + id + ": " + e.getMessage(), e);
 					}
 				}
 				logger.info("loadCardsFromJson : MasterSet caricato con successo ({} carte).", cardsMap.size());
 			}
-		} catch (InvalidCardDataException e) {
-			logger.fatal("loadCardsFromJson : Caricamento MasterSet interrotto ({}).", e.getMessage());
-			throw e;
 		} catch (Exception e) {
 			logger.fatal("loadCardsFromJson : Errore critico durante la lettura del file JSON delle carte ({}).",
 					e.getMessage(), e);
-			throw new RuntimeException("Impossibile caricare il catalogo carte da JSON.", e);
+			throw new RuntimeException("Impossibile caricare il catalogo carte da JSON (" + e.getMessage() + ").", e);
 		}
 	}
 

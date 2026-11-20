@@ -18,6 +18,7 @@ import thearchis.server.controller.ShopController;
 public class MessageDispatcher {
 
 	private static final Logger logger = LogManager.getLogger("[MessageDispatcher]");
+
 	private static MessageDispatcher instance;
 
 	private final AuthenticationController authenticationController;

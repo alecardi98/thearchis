@@ -21,7 +21,14 @@ public class ServerListener implements Runnable {
 	private volatile boolean running = true;
 
 	public ServerListener(ObjectInputStream in, Client client) {
+		if (in == null) {
+			throw new IllegalArgumentException("ServerListener : in non può essere null.");
+		}
 		this.in = in;
+
+		if (client == null) {
+			throw new IllegalArgumentException("ServerListener : client non può essere null.");
+		}
 		this.client = client;
 	}
 

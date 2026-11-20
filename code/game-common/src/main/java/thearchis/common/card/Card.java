@@ -6,6 +6,12 @@ import thearchis.common.hero.HeroName;
 
 public abstract class Card implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+
+	private static final int MINIMUM_ID = 1;
+	private static final int MINIMUM_MANA_COST = 0;
+	private static final int MAXIMUM_MANA_COST = 10;
+
 	private final int id;
 	private final String name;
 	private final int manaCost;
@@ -17,58 +23,57 @@ public abstract class Card implements Serializable {
 
 	public Card(int id, String name, int manaCost, CardType type, CardRarity rarity, HeroName hero, String description,
 			Boolean constrained) {
-		if (id <= 0) {
-			throw new InvalidCardDataException(id, "id");
-		} else {
-			this.id = id;
+		if (id < MINIMUM_ID) {
+			throw new IllegalArgumentException("Card : id non può essere < " + MINIMUM_ID + " (id : " + id + ").");
 		}
-		
+		this.id = id;
+
+		if (name == null || name.isBlank()) {
+			throw new IllegalArgumentException("Card : name non può essere null o vuoto.");
+		}
 		this.name = name;
 
-		if (manaCost < 0 || manaCost > 10) {
-			throw new InvalidCardDataException(id, "cost");
-		} else {
-			this.manaCost = manaCost;
+		if (manaCost < MINIMUM_MANA_COST || manaCost > MAXIMUM_MANA_COST) {
+			throw new IllegalArgumentException("Card : manaCost non può essere < " + MINIMUM_MANA_COST + " o > "
+					+ MAXIMUM_MANA_COST + " (manaCost : " + manaCost + ").");
 		}
+		this.manaCost = manaCost;
 
-		if (type != CardType.CREATURE && type != CardType.SPELL) {
-			throw new InvalidCardDataException(id, "type");
-		} else {
-			this.type = type;
+		if (type == null) {
+			throw new IllegalArgumentException("Card : type non può essere null.");
 		}
+		this.type = type;
 
-		if (rarity != CardRarity.COMMON && rarity != CardRarity.RARE && rarity != CardRarity.EPIC
-				&& rarity != CardRarity.LEGENDARY) {
-			throw new InvalidCardDataException(id, "rarity");
-		} else {
-			this.rarity = rarity;
+		if (rarity == null) {
+			throw new IllegalArgumentException("Card : rarity non può essere null.");
 		}
+		this.rarity = rarity;
 
-		if (hero != HeroName.AETHELGARD && hero != HeroName.BRAKKAR && hero != HeroName.LYRA && hero != HeroName.MALAKOR
-				&& hero != HeroName.NONE) {
-			throw new InvalidCardDataException(id, "hero");
-		} else {
-			this.hero = hero;
+		if (hero == null) {
+			throw new IllegalArgumentException("Card : hero non può essere null.");
 		}
-		
+		this.hero = hero;
+
+		if (description == null) {
+			throw new IllegalArgumentException("Card : description non può essere null.");
+		}
 		this.description = description;
-		
+
 		if (constrained == null) {
-			throw new InvalidCardDataException(id, "constrained");
-		} else {
-			this.constrained = constrained;
+			throw new IllegalArgumentException("Card : constrained non può essere null.");
 		}
+		this.constrained = constrained;
 	}
 
 	/*
 	 * Getter & Setter
 	 */
 	public int getCraftCost() {
-		return rarity != null ? rarity.getCraftCost() : 0;
+		return rarity.getCraftCost();
 	}
 
 	public int getDisenchantValue() {
-		return rarity != null ? rarity.getDisenchantValue() : 0;
+		return rarity.getDisenchantValue();
 	}
 
 	public int getId() {

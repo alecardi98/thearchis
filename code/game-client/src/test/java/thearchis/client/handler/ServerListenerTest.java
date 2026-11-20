@@ -19,6 +19,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -101,13 +104,16 @@ class ServerListenerTest {
 
 	@Test
 	@DisplayName("processMessage: ignora Message null, MessageType null, MessageType non gestito e payload non validi")
-	void testInvalidMessages() throws Exception {
-		Message nullTypeMsg = new Message(null, new OperationResult<>(OperationStatus.REGISTER_OK, null));
+	void testProcessMessageInvalidMessages() throws Exception {
+		Message nullTypeMsg = mockMessage(null, new OperationResult<>(OperationStatus.REGISTER_OK, null));
 		Message unhandledTypeMsg = mockMessage(MessageType.values()[MessageType.values().length - 1],
 				new OperationResult<>(OperationStatus.REGISTER_OK, null));
 		Message nullPayloadMsg = new Message(MessageType.REGISTER_RESPONSE, null);
 		Message wrongPayloadTypeMsg = new Message(MessageType.REGISTER_RESPONSE, "PayloadErrato");
-		Message nullStatusMsg = new Message(MessageType.REGISTER_RESPONSE, new OperationResult<>(null, null));
+
+		@SuppressWarnings("unchecked")
+		OperationResult<Void> nullStatusResult = mock(OperationResult.class, withSettings().serializable());
+		Message nullStatusMsg = new Message(MessageType.REGISTER_RESPONSE, nullStatusResult);
 
 		ObjectInputStream in = createInputStream(nullTypeMsg, nullPayloadMsg, wrongPayloadTypeMsg, nullStatusMsg, null);
 		serverListener = new ServerListener(in, mockClient);
@@ -117,8 +123,7 @@ class ServerListenerTest {
 		verify(mockClient, times(1)).serverDisconnection();
 
 		reset(mockClient);
-		java.lang.reflect.Method processMethod = ServerListener.class.getDeclaredMethod("processMessage",
-				Message.class);
+		Method processMethod = ServerListener.class.getDeclaredMethod("processMessage", Message.class);
 		processMethod.setAccessible(true);
 		assertDoesNotThrow(() -> processMethod.invoke(serverListener, (Object) null));
 		assertDoesNotThrow(() -> processMethod.invoke(serverListener, unhandledTypeMsg));
@@ -195,7 +200,9 @@ class ServerListenerTest {
 		Player mockPlayer = mock(Player.class);
 		when(mockClient.getPlayer()).thenReturn(mockPlayer);
 
-		Collection collection = new Collection(100);
+		Map<Integer, Integer> cards = new HashMap<>();
+		Collection collection = new Collection(cards, 100);
+
 		Message okMsg = new Message(MessageType.COLLECTION_RESPONSE,
 				new OperationResult<>(OperationStatus.COLLECTION_OK, collection));
 		Message badReqMsg = new Message(MessageType.COLLECTION_RESPONSE,
@@ -233,8 +240,9 @@ class ServerListenerTest {
 		}).when(mockClient).serverDisconnection();
 		when(mockClient.getPlayer()).thenReturn(null);
 
+		Map<Integer, Integer> cards = new HashMap<>();
 		Message validPayloadNullPlayerMsg = new Message(MessageType.COLLECTION_RESPONSE,
-				new OperationResult<>(OperationStatus.COLLECTION_OK, new Collection(50)));
+				new OperationResult<>(OperationStatus.COLLECTION_OK, new Collection(cards, 50)));
 
 		ObjectInputStream in2 = createInputStream(validPayloadNullPlayerMsg, null);
 		serverListener = new ServerListener(in2, mockClient);

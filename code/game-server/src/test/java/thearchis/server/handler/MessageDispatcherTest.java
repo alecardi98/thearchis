@@ -16,6 +16,7 @@ import thearchis.common.card.MasterSet;
 import thearchis.common.card.Spell;
 import thearchis.common.game.ClientState;
 import thearchis.common.game.Collection;
+import thearchis.common.game.Deck;
 import thearchis.common.game.Player;
 import thearchis.common.hero.HeroName;
 import thearchis.common.message.AuthenticationData;
@@ -29,6 +30,11 @@ import thearchis.server.db.DBManager;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 class MessageDispatcherTest {
@@ -45,10 +51,9 @@ class MessageDispatcherTest {
 	}
 
 	@Test
-	@DisplayName("Rifiuta messaggio non di tipo MessageType")
+	@DisplayName("Rifiuta messaggio con MessageType null")
 	void testDispatchInvalidMessage() {
-
-		Message badMsg = new Message(null, new CollectionData());
+		Message badMsg = mock(Message.class);
 		messageDispatcher.dispatch(mockClientHandler, badMsg);
 
 		ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
@@ -199,7 +204,8 @@ class MessageDispatcherTest {
 		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
 			Server mockServer = mock(Server.class);
 			DBManager mockDbManager = mock(DBManager.class);
-			Player fakePlayer = new Player("ValidUser", 100, new Collection(50), null, 0, 0);
+			Map<Integer, Integer> cards = new HashMap<>();
+			Player fakePlayer = new Player("ValidUser", 100, new Collection(cards, 50), new ArrayList<>(), 0, 0);
 
 			mockedServer.when(Server::getInstance).thenReturn(mockServer);
 			when(mockServer.getDBManager()).thenReturn(mockDbManager);
@@ -233,7 +239,8 @@ class MessageDispatcherTest {
 			when(mockPlayer.getNickname()).thenReturn("AuthUser");
 			when(mockServer.isUserAuthenticated("AuthUser")).thenReturn(true);
 
-			Collection fakeCollection = new Collection(50);
+			Map<Integer, Integer> cards = new HashMap<>();
+			Collection fakeCollection = new Collection(cards, 50);
 			when(mockDbManager.getUserCollection("AuthUser"))
 					.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, fakeCollection));
 
@@ -272,7 +279,8 @@ class MessageDispatcherTest {
 					"Deal damage", false);
 			when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-			Collection updatedCollection = new Collection(200);
+			Map<Integer, Integer> cards = new HashMap<>();
+			Collection updatedCollection = new Collection(cards, 200);
 			updatedCollection.addCard(101);
 			when(mockDbManager.craftCard("AuthUser", 101, validCard.getCraftCost()))
 					.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedCollection));
@@ -311,7 +319,8 @@ class MessageDispatcherTest {
 					"Deal damage", false);
 			when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-			Collection updatedCollection = new Collection(300);
+			Map<Integer, Integer> cards = new HashMap<>();
+			Collection updatedCollection = new Collection(cards, 300);
 			when(mockDbManager.disenchantCard("AuthUser", 101, validCard.getDisenchantValue()))
 					.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection));
 

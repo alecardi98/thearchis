@@ -1,15 +1,24 @@
 package thearchis.common.game;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
 
 public class Collection implements Serializable {
 
-	private final Map<Integer, Integer> cards = new HashMap<>(); // cardId, quantity
+	private static final long serialVersionUID = 1L;
+
+	private final Map<Integer, Integer> cards; // cardId, quantity
 	private int dust;
 
-	public Collection(int dust) {
+	public Collection(Map<Integer, Integer> cards, int dust) {
+		if (cards == null) {
+			throw new IllegalArgumentException("Collection : cards non può essere null.");
+		}
+		this.cards = cards;
+
+		if (dust < 0) {
+			throw new IllegalArgumentException("Collection : dust non può essere < 0.");
+		}
 		this.dust = dust;
 	}
 

@@ -1,18 +1,20 @@
 package thearchis.common.hero;
 
 public class Hero {
-	private final HeroName name; // indica la classe di appartenenza
-	private final HeroPower power; // indica il potere eroe
+
+	private final HeroName name;
+	private final HeroPower power;
 
 	public Hero(HeroName name, HeroPower power) {
-
-		if (name != HeroName.AETHELGARD && name != HeroName.BRAKKAR && name != HeroName.LYRA && name != HeroName.MALAKOR
-				&& name != HeroName.NONE) {
-			throw new InvalidHeroDataException(name, "name");
-		} else {
-			this.name = name;
+		if (name == null) {
+			throw new IllegalArgumentException("Hero : name non può essere null.");
 		}
+		this.name = name;
 
+		if (power == null) {
+			throw new IllegalArgumentException("Hero : power non può essere null.");
+		}
 		this.power = power;
 	}
+
 }

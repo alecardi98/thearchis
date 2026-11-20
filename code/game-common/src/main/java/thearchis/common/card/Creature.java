@@ -4,40 +4,41 @@ import thearchis.common.hero.HeroName;
 
 public class Creature extends Card {
 
-	private final CreatureSubtype subtype; // sottotipo della creatura
-	private boolean summoningSickness; // handicap di evocazione
-	private int atk; // valore di attacco della creatura
-	private int def; // valore di difesa della creatura
+	private static final long serialVersionUID = 1L;
+
+	private static final int MINIMUM_ATK = 0;
+	private static final int MINIMUM_DEF = 1;
+
+	private final CreatureSubtype subtype;
+	private boolean summoningSickness;
+	private int atk;
+	private int def;
 
 	public Creature(int id, String name, int manaCost, CardType type, CardRarity rarity, HeroName hero,
 			String description, boolean constrained, CreatureSubtype subtype, int atk, int def) {
 		super(id, name, manaCost, type, rarity, hero, description, constrained);
 
 		if (type != CardType.CREATURE) {
-			throw new InvalidCardDataException(id, "type mismatch: atteso CREATURE per un'istanza di Creature");
+			throw new IllegalArgumentException(
+					"Card : type atteso " + CardType.CREATURE + " per un'istanza di " + this.getClass() + ".");
 		}
+
+		if (subtype == null) {
+			throw new IllegalArgumentException("Card : subtype non può essere null.");
+		}
+		this.subtype = subtype;
 
 		summoningSickness = true;
 
-		if (subtype != CreatureSubtype.BEAST && subtype != CreatureSubtype.DEMON && subtype != CreatureSubtype.GOD
-				&& subtype != CreatureSubtype.HUMAN && subtype != CreatureSubtype.NONE) {
-			throw new InvalidCardDataException(id, "subtype");
-		} else {
-			this.subtype = subtype;
+		if (atk < MINIMUM_ATK) {
+			throw new IllegalArgumentException("Card : atk non può essere < " + MINIMUM_ATK + ".");
 		}
+		this.atk = atk;
 
-		if (atk < 0) {
-			throw new InvalidCardDataException(id, "attack");
-		} else {
-			this.atk = atk;
+		if (def < MINIMUM_DEF) {
+			throw new IllegalArgumentException("Card : def non può essere < " + MINIMUM_DEF + ".");
 		}
-
-		if (def <= 0) {
-			throw new InvalidCardDataException(id, "defense");
-		} else {
-			this.def = def;
-		}
-
+		this.def = def;
 	}
 
 }

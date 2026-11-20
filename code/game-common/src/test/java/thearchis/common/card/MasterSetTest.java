@@ -41,13 +41,22 @@ class MasterSetTest {
 	}
 
 	@Test
-	@DisplayName("Tutte le carte caricate nel MasterSet devono essere prive di valori null nei campi chiave")
+	@DisplayName("Tutte le carte caricate nel MasterSet devono essere istanze valide di Creature o Spell")
 	void testAllLoadedCardsAreValid() {
 		Map<Integer, Card> cards = masterSet.getAllCards();
-		for (Card card : cards.values()) {
-			assertNotNull(card.getId());
+		for (Map.Entry<Integer, Card> entry : cards.entrySet()) {
+			Card card = entry.getValue();
+			assertNotNull(card);
+			assertEquals(entry.getKey(), card.getId());
 			assertTrue(card.getId() > 0);
-			assertNotNull(card.isConstrained());
+			assertTrue(card instanceof Creature || card instanceof Spell);
 		}
 	}
+
+	@Test
+	@DisplayName("getInstance: restituisce lo stesso singleton")
+	void testGetInstance() {
+		assertSame(masterSet, MasterSet.getInstance());
+	}
+
 }

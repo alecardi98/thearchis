@@ -24,6 +24,7 @@ import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -251,7 +252,7 @@ public class DBManager {
 			}
 
 			int dust = collectionDoc.getInteger("dust", 0);
-			Collection collection = new Collection(dust);
+			Collection collection = new Collection(new HashMap<>(), dust);
 
 			for (Map.Entry<String, Object> entry : cardsDoc.entrySet()) {
 				try {
@@ -295,7 +296,7 @@ public class DBManager {
 				}
 
 				HeroName hero = HeroName.valueOf(heroStr);
-				Deck deck = new Deck(hero);
+				Deck deck = new Deck(hero, new HashMap<>());
 
 				Document cardsDoc = deckDoc.get("cards", Document.class);
 				if (cardsDoc == null) {

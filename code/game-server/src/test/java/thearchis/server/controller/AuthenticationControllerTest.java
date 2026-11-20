@@ -26,6 +26,10 @@ import thearchis.server.handler.Server;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 @ExtendWith(MockitoExtension.class)
 class AuthenticationControllerTest {
 
@@ -80,12 +84,18 @@ class AuthenticationControllerTest {
 	@Test
 	@DisplayName("Rifiuta registrazione per credenziali nulle")
 	void testHandleRegisterNullCredentials() {
-		AuthenticationData data = new AuthenticationData(null, null);
-		authenticationController.handleRegister(clientHandler, new Message(MessageType.REGISTER_REQUEST, data));
+		AuthenticationData nullCredentials = mock(AuthenticationData.class);
+
+		Message message = new Message(MessageType.REGISTER_REQUEST, nullCredentials);
+
+		authenticationController.handleRegister(clientHandler, message);
+
 		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 		verify(clientHandler).sendMessage(captor.capture());
+
 		Message response = captor.getValue();
 		assertEquals(MessageType.REGISTER_RESPONSE, response.getType());
+
 		OperationResult<?> result = (OperationResult<?>) response.getData();
 		assertEquals(OperationStatus.BAD_REQUEST, result.getStatus());
 	}
@@ -93,7 +103,11 @@ class AuthenticationControllerTest {
 	@Test
 	@DisplayName("Rifiuta registrazione per credenziali vuote")
 	void testHandleRegisterEmptyCredentials() {
-		Message message = new Message(MessageType.REGISTER_REQUEST, new AuthenticationData("", ""));
+		AuthenticationData emptyCredentials = mock(AuthenticationData.class);
+		when(emptyCredentials.getNickname()).thenReturn("");
+		when(emptyCredentials.getPassword()).thenReturn("");
+
+		Message message = new Message(MessageType.REGISTER_REQUEST, emptyCredentials);
 
 		authenticationController.handleRegister(clientHandler, message);
 
@@ -170,7 +184,9 @@ class AuthenticationControllerTest {
 	@Test
 	@DisplayName("Rifiuta login per credenziali nulle")
 	void testHandleLoginNullCredentials() {
-		Message message = new Message(MessageType.LOGIN_REQUEST, new AuthenticationData(null, null));
+		AuthenticationData nullCredentials = mock(AuthenticationData.class);
+
+		Message message = new Message(MessageType.LOGIN_REQUEST, nullCredentials);
 
 		authenticationController.handleLogin(clientHandler, message);
 
@@ -187,7 +203,11 @@ class AuthenticationControllerTest {
 	@Test
 	@DisplayName("Rifiuta login per credenziali vuote")
 	void testHandleLoginEmptyCredentials() {
-		Message message = new Message(MessageType.LOGIN_REQUEST, new AuthenticationData("", ""));
+		AuthenticationData emptyCredentials = mock(AuthenticationData.class);
+		when(emptyCredentials.getNickname()).thenReturn("");
+		when(emptyCredentials.getPassword()).thenReturn("");
+
+		Message message = new Message(MessageType.LOGIN_REQUEST, emptyCredentials);
 
 		authenticationController.handleLogin(clientHandler, message);
 
@@ -231,7 +251,8 @@ class AuthenticationControllerTest {
 			mockedServer.when(Server::getInstance).thenReturn(mockServer);
 			when(mockServer.isUserAuthenticated("ValidUser")).thenReturn(false);
 
-			Player fakePlayer = new Player("ValidUser", 100, new Collection(50), null, 0, 0);
+			Map<Integer, Integer> cards = new HashMap<>();
+			Player fakePlayer = new Player("ValidUser", 100, new Collection(cards, 50), new ArrayList<>(), 0, 0);
 			when(mockServer.getDBManager()).thenReturn(mockDbManager);
 			when(mockDbManager.loginUser("ValidUser", "Pass123"))
 					.thenReturn(new OperationResult<>(OperationStatus.LOGIN_OK, fakePlayer));

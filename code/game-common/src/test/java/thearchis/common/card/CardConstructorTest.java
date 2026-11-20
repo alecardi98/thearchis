@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CardConstructorTest {
 
 	@Test
-	@DisplayName("Costruttore Card accetta dati validi per una Spell")
+	@DisplayName("Costruttore Spell: accetta dati validi")
 	void testValidSpellCreation() {
 		Spell spell = new Spell(1, "Fulmine", 2, CardType.SPELL, CardRarity.COMMON, HeroName.NONE, "Danno", true);
 		assertEquals(1, spell.getId());
@@ -17,67 +17,99 @@ class CardConstructorTest {
 	}
 
 	@Test
-	@DisplayName("Costruttore Card lancia InvalidCardDataException per ID <= 0")
+	@DisplayName("Costruttore Creature: accetta dati validi")
+	void testValidCreatureCreation() {
+		Creature creature = new Creature(2, "Scudiero", 0, CardType.CREATURE, CardRarity.COMMON, HeroName.AETHELGARD,
+				"Difensore", false, CreatureSubtype.HUMAN, 0, 1);
+		assertEquals(2, creature.getId());
+		assertFalse(creature.isConstrained());
+	}
+
+	@Test
+	@DisplayName("Costruttore Card: IllegalArgumentException per id < 1")
 	void testInvalidIdThrowsException() {
-		assertThrows(InvalidCardDataException.class,
+		assertThrows(IllegalArgumentException.class,
 				() -> new Spell(0, "Palla di Fuoco", 3, CardType.SPELL, CardRarity.RARE, HeroName.NONE, "Desc", true));
 	}
 
 	@Test
-	@DisplayName("Costruttore Card lancia InvalidCardDataException per manaCost fuori range")
+	@DisplayName("Costruttore Card: IllegalArgumentException per name null o vuoto")
+	void testInvalidNameThrowsException() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new Spell(1, null, 3, CardType.SPELL, CardRarity.RARE, HeroName.NONE, "Desc", true));
+		assertThrows(IllegalArgumentException.class,
+				() -> new Spell(1, "   ", 3, CardType.SPELL, CardRarity.RARE, HeroName.NONE, "Desc", true));
+	}
+
+	@Test
+	@DisplayName("Costruttore Card: IllegalArgumentException per manaCost fuori range")
 	void testInvalidManaCostThrowsException() {
-		assertThrows(InvalidCardDataException.class,
+		assertThrows(IllegalArgumentException.class,
+				() -> new Spell(1, "Super Spell", -1, CardType.SPELL, CardRarity.EPIC, HeroName.NONE, "Desc", false));
+		assertThrows(IllegalArgumentException.class,
 				() -> new Spell(1, "Super Spell", 15, CardType.SPELL, CardRarity.EPIC, HeroName.NONE, "Desc", false));
 	}
 
 	@Test
-	@DisplayName("Costruttore Card lancia InvalidCardDataException per type non valido")
+	@DisplayName("Costruttore Card: lancia IllegalArgumentException per type null o errato")
 	void testInvalidCardTypeException() {
-		assertThrows(InvalidCardDataException.class,
+		assertThrows(IllegalArgumentException.class,
+				() -> new Spell(1, "Super Spell", 1, null, CardRarity.EPIC, HeroName.NONE, "Desc", false));
+		assertThrows(IllegalArgumentException.class,
 				() -> new Spell(1, "Super Spell", 1, CardType.CREATURE, CardRarity.EPIC, HeroName.NONE, "Desc", false));
+		assertThrows(IllegalArgumentException.class, () -> new Creature(2, "Guerriero", 2, CardType.SPELL,
+				CardRarity.COMMON, HeroName.NONE, "Desc", true, CreatureSubtype.HUMAN, 2, 2));
 	}
 
 	@Test
-	@DisplayName("Costruttore Card lancia InvalidCardDataException per rarity non valida")
+	@DisplayName("Costruttore Card: IllegalArgumentException per rarity null")
 	void testInvalidRarityException() {
-		assertThrows(InvalidCardDataException.class,
+		assertThrows(IllegalArgumentException.class,
 				() -> new Spell(1, "Super Spell", 1, CardType.SPELL, null, HeroName.NONE, "Desc", false));
 	}
 
 	@Test
-	@DisplayName("Costruttore Card lancia InvalidCardDataException per hero non valido")
+	@DisplayName("Costruttore Card: IllegalArgumentException per hero null")
 	void testInvalidHeroException() {
-		assertThrows(InvalidCardDataException.class,
+		assertThrows(IllegalArgumentException.class,
 				() -> new Spell(1, "Super Spell", 1, CardType.SPELL, CardRarity.COMMON, null, "Desc", false));
 	}
 
 	@Test
-	@DisplayName("Costruttore Card lancia InvalidCardDataException se constrained è null")
+	@DisplayName("Costruttore Card: IllegalArgumentException per description null")
+	void testInvalidDescriptionException() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new Spell(1, "Super Spell", 1, CardType.SPELL, CardRarity.COMMON, HeroName.NONE, null, false));
+	}
+
+	@Test
+	@DisplayName("Costruttore Card: IllegalArgumentException per constrained null")
 	void testConstrainedNullThrowsException() {
-		InvalidCardDataException ex = assertThrows(InvalidCardDataException.class,
+		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
 				() -> new Spell(1, "Palla di Fuoco", 3, CardType.SPELL, CardRarity.RARE, HeroName.NONE, "Desc", null));
 
 		assertTrue(ex.getMessage().contains("constrained"));
 	}
 
 	@Test
-	@DisplayName("Costruttore Creature lancia InvalidCardDataException per subtype non valido.")
+	@DisplayName("Costruttore Creature: IllegalArgumentException per subtype null")
 	void testInvalidSubtypeThrowsException() {
-		assertThrows(InvalidCardDataException.class, () -> new Creature(2, "Guerriero", 2, CardType.CREATURE,
-				CardRarity.COMMON, HeroName.NONE, "Desc", true, null, 2, 0));
+		assertThrows(IllegalArgumentException.class, () -> new Creature(2, "Guerriero", 2, CardType.CREATURE,
+				CardRarity.COMMON, HeroName.NONE, "Desc", true, null, 2, 2));
 	}
 
 	@Test
-	@DisplayName("Costruttore Creature lancia InvalidCardDataException per difesa <= 0")
+	@DisplayName("Costruttore Creature: IllegalArgumentException per difesa <= 0")
 	void testInvalidDefenseThrowsException() {
-		assertThrows(InvalidCardDataException.class, () -> new Creature(2, "Guerriero", 2, CardType.CREATURE,
+		assertThrows(IllegalArgumentException.class, () -> new Creature(2, "Guerriero", 2, CardType.CREATURE,
 				CardRarity.COMMON, HeroName.NONE, "Desc", true, CreatureSubtype.HUMAN, 2, 0));
 	}
 
 	@Test
-	@DisplayName("Costruttore Creature lancia InvalidCardDataException per attacco < 0")
+	@DisplayName("Costruttore Creature: IllegalArgumentException per attacco < 0")
 	void testNegativeAttackThrowsException() {
-		assertThrows(InvalidCardDataException.class, () -> new Creature(3, "Bestia", 2, CardType.CREATURE,
+		assertThrows(IllegalArgumentException.class, () -> new Creature(3, "Bestia", 2, CardType.CREATURE,
 				CardRarity.COMMON, HeroName.NONE, "Desc", true, CreatureSubtype.BEAST, -1, 3));
 	}
+
 }

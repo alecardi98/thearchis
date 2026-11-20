@@ -33,6 +33,9 @@ import thearchis.server.handler.Server;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @ExtendWith(MockitoExtension.class)
 class CollectionControllerTest {
 
@@ -194,7 +197,8 @@ class CollectionControllerTest {
 		setupAuthenticatedUser();
 		when(mockServer.getDBManager()).thenReturn(mockDbManager);
 
-		Collection fakeCollection = new Collection(0);
+		Map<Integer, Integer> cards = new HashMap<>();
+		Collection fakeCollection = new Collection(cards, 0);
 		when(mockDbManager.getUserCollection("AuthenticatedUser"))
 				.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, fakeCollection));
 
@@ -348,7 +352,8 @@ class CollectionControllerTest {
 				"Deal damage", false);
 		when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-		Collection updatedCollection = new Collection(200);
+		Map<Integer, Integer> cards = new HashMap<>();
+		Collection updatedCollection = new Collection(cards, 200);
 		updatedCollection.addCard(101);
 		when(mockDbManager.craftCard("AuthenticatedUser", 101, validCard.getCraftCost()))
 				.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedCollection));
@@ -502,7 +507,8 @@ class CollectionControllerTest {
 				"Deal damage", false);
 		when(mockMasterSet.getCardById(101)).thenReturn(validCard);
 
-		Collection updatedCollection = new Collection(300);
+		Map<Integer, Integer> cards = new HashMap<>();
+		Collection updatedCollection = new Collection(cards, 300);
 		when(mockDbManager.disenchantCard("AuthenticatedUser", 101, validCard.getDisenchantValue()))
 				.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection));
 

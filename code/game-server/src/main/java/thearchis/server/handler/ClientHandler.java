@@ -25,7 +25,11 @@ public class ClientHandler implements Runnable {
 	private Player player;
 
 	public ClientHandler(Socket socket, int clientId) {
+		if (socket == null) {
+			throw new IllegalArgumentException("ClientHandler : socket non può essere null.");
+		}
 		this.socket = socket;
+
 		this.clientId = clientId;
 		clientState = ClientState.NOT_AUTHENTICATED;
 	}
