@@ -14,7 +14,7 @@ import thearchis.common.message.Message;
 
 public class ClientHandler implements Runnable {
 
-	private static final Logger logger = LogManager.getLogger(ClientHandler.class);
+	private static final Logger logger = LogManager.getLogger("[ClientHandler]");
 
 	private final Socket socket;
 	private ObjectOutputStream out;
@@ -44,11 +44,11 @@ public class ClientHandler implements Runnable {
 				if (obj instanceof Message msg) {
 					MessageDispatcher.getInstance().dispatch(this, msg);
 				} else {
-					logger.warn("Client #{} : oggetto non riconosciuto ricevuto dal socket.", clientId);
+					logger.warn("Client #{} : run : oggetto non riconosciuto ricevuto dal socket.", clientId);
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			logger.info("Client #{} : connessione interrotta con il client.", clientId);
+			logger.info("Client #{} : run : connessione interrotta con il client.", clientId);
 		} finally {
 			cleanUp();
 		}
@@ -63,7 +63,7 @@ public class ClientHandler implements Runnable {
 			if (socket != null && !socket.isClosed())
 				socket.close();
 		} catch (IOException e) {
-			logger.debug("Client #{} : socket del client già chiuso o non raggiungibile.", clientId);
+			logger.debug("Client #{} : cleanUp : socket del client già chiuso o non raggiungibile.", clientId);
 		} finally {
 			Server.getInstance().removeClient(clientId);
 		}
@@ -71,11 +71,12 @@ public class ClientHandler implements Runnable {
 
 	public synchronized void sendMessage(Object msg) {
 		if (msg == null) {
-			logger.error("Client #{} : il messaggio da inviare al client è null.", clientId);
+			logger.error("Client #{} : sendMessage : il messaggio da inviare al client è null.", clientId);
 			return;
 		}
 		if (out == null) {
-			logger.error("Client #{} : impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
+			logger.error(
+					"Client #{} : sendMessage : impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
 					clientId);
 			return;
 		}
@@ -83,8 +84,8 @@ public class ClientHandler implements Runnable {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Client #{} : errore I/O durante l'invio del pacchetto al client ({}).", clientId,
-					e.getMessage());
+			logger.error("Client #{} : sendMessage : errore I/O durante l'invio del pacchetto al client ({}).",
+					clientId, e.getMessage());
 		}
 	}
 
@@ -100,8 +101,8 @@ public class ClientHandler implements Runnable {
 	}
 
 	public void setPlayer(Player player) {
-		if(player == null) {
-			logger.error("Client #{} : setPlayer non può settare player null.",clientId);
+		if (player == null) {
+			logger.error("Client #{} : setPlayer : non può settare player null.", clientId);
 			return;
 		} else {
 			this.player = player;
@@ -113,8 +114,8 @@ public class ClientHandler implements Runnable {
 	}
 
 	public void setClientState(ClientState clientState) {
-		if(clientState == null) {
-			logger.error("Client #{} : setClientState non può settare clientState null.",clientId);
+		if (clientState == null) {
+			logger.error("Client #{} : setClientState : non può settare clientState null.", clientId);
 			return;
 		} else {
 			this.clientState = clientState;

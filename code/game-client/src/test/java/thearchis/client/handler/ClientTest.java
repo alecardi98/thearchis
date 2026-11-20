@@ -31,13 +31,13 @@ class ClientTest {
 
 	@Test
 	@DisplayName("sendMessage con socket disconnesso gestisce l'assenza senza lanciare eccezioni")
-	void testSendMessageNotConnected_doesNotThrow() {
+	void testSendMessageNotConnected() {
 		assertDoesNotThrow(() -> client.sendMessage("TestMessage"));
 	}
 
 	@Test
 	@DisplayName("Tutti i metodi sendRequest non sollevano eccezioni anche senza connessione attiva")
-	void testSendRequestsNotConnected_safeHandling() {
+	void testSendRequestsNotConnected() {
 		assertDoesNotThrow(() -> {
 			client.sendRegisterRequest("user", "pass");
 			client.sendLoginRequest("user", "pass");
@@ -50,14 +50,14 @@ class ClientTest {
 
 	@Test
 	@DisplayName("serverDisconnection: chiamate successive non sollevano eccezioni")
-	void testServerDisconnection_idempotent() {
+	void testServerDisconnectionManyCalls() {
 		assertDoesNotThrow(() -> client.serverDisconnection());
 		assertDoesNotThrow(() -> client.serverDisconnection());
 	}
 
 	@Test
 	@DisplayName("sendRegisterRequest con credenziali null/vuote non chiama sendMessage")
-	void testSendRegisterRequestsNullCredentials() {
+	void testSendRegisterRequestsBadCredentials() {
 		Client spyClient = spy(new Client());
 
 		spyClient.sendRegisterRequest(null, "psw");
@@ -66,21 +66,6 @@ class ClientTest {
 		spyClient.sendRegisterRequest("", "psw");
 		spyClient.sendRegisterRequest("user", "");
 		spyClient.sendRegisterRequest("", "");
-
-		verify(spyClient, never()).sendMessage(any());
-	}
-
-	@Test
-	@DisplayName("sendLoginRequest con credenziali null/vuote non chiama sendMessage")
-	void testSendLoginRequestsNullCredentials() {
-		Client spyClient = spy(new Client());
-
-		spyClient.sendLoginRequest(null, "psw");
-		spyClient.sendLoginRequest("user", null);
-		spyClient.sendLoginRequest(null, null);
-		spyClient.sendLoginRequest("", "psw");
-		spyClient.sendLoginRequest("user", "");
-		spyClient.sendLoginRequest("", "");
 
 		verify(spyClient, never()).sendMessage(any());
 	}
@@ -99,6 +84,21 @@ class ClientTest {
 		Message sent = (Message) msgCaptor.getValue();
 		assertEquals(MessageType.REGISTER_REQUEST, sent.getType());
 		assertInstanceOf(AuthenticationData.class, sent.getData());
+	}
+
+	@Test
+	@DisplayName("sendLoginRequest con credenziali null/vuote non chiama sendMessage")
+	void testSendLoginRequestsBadCredentials() {
+		Client spyClient = spy(new Client());
+
+		spyClient.sendLoginRequest(null, "psw");
+		spyClient.sendLoginRequest("user", null);
+		spyClient.sendLoginRequest(null, null);
+		spyClient.sendLoginRequest("", "psw");
+		spyClient.sendLoginRequest("user", "");
+		spyClient.sendLoginRequest("", "");
+
+		verify(spyClient, never()).sendMessage(any());
 	}
 
 	@Test
@@ -129,17 +129,6 @@ class ClientTest {
 	}
 
 	@Test
-	@DisplayName("sendDisenchantRequest con cardId <= 0 non chiama sendMessage")
-	void testSendDisenchantRequestsInvalidCardId() {
-		Client spyClient = spy(new Client());
-
-		spyClient.sendDisenchantRequest(0);
-		spyClient.sendDisenchantRequest(-1);
-
-		verify(spyClient, never()).sendMessage(any());
-	}
-
-	@Test
 	@DisplayName("sendCraftRequest con cardId valido costruisce il Message CRAFT_REQUEST corretto")
 	void testSendCraftRequestSuccess() {
 		Client spyClient = spy(new Client());
@@ -153,6 +142,17 @@ class ClientTest {
 		Message sent = (Message) msgCaptor.getValue();
 		assertEquals(MessageType.CRAFT_REQUEST, sent.getType());
 		assertInstanceOf(CollectionData.class, sent.getData());
+	}
+
+	@Test
+	@DisplayName("sendDisenchantRequest con cardId <= 0 non chiama sendMessage")
+	void testSendDisenchantRequestsInvalidCardId() {
+		Client spyClient = spy(new Client());
+
+		spyClient.sendDisenchantRequest(0);
+		spyClient.sendDisenchantRequest(-1);
+
+		verify(spyClient, never()).sendMessage(any());
 	}
 
 	@Test

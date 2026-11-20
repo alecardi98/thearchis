@@ -52,10 +52,6 @@ class DBManagerTest {
 		lenient().when(mockUsersCollection.find(any(Bson.class))).thenReturn(mockFindIterable);
 	}
 
-	// =========================================================================
-	// 1. registerUser
-	// =========================================================================
-
 	@Test
 	@DisplayName("registerUser: rifiuta le credenziali null/vuote senza toccare il DB")
 	void testRegisterUserNullCredentials() {
@@ -121,10 +117,6 @@ class DBManagerTest {
 		assertNotNull(initialCards, "La mappa cards iniziale non deve essere null");
 		assertFalse(initialCards.isEmpty(), "La collezione iniziale deve contenere le carte base");
 	}
-
-	// =========================================================================
-	// 2. loginUser (e parsing Player / Collection / Decks)
-	// =========================================================================
 
 	@Test
 	@DisplayName("loginUser: rifiuta le credenziali null/vuote senza toccare il DB")
@@ -241,10 +233,6 @@ class DBManagerTest {
 		assertEquals(2, result.getData().getCollection().getCardQuantity(101));
 	}
 
-	// =========================================================================
-	// 3. getUserCollection
-	// =========================================================================
-
 	@Test
 	@DisplayName("getUserCollection: rifiuta nickname null o vuoto")
 	void testGetUserCollectionInvalidNickname() {
@@ -300,10 +288,6 @@ class DBManagerTest {
 		assertEquals(2, result.getData().getCardQuantity(101));
 		assertEquals(1, result.getData().getCardQuantity(102));
 	}
-
-	// =========================================================================
-	// 4. craftCard
-	// =========================================================================
 
 	@Test
 	@DisplayName("craftCard: fallito per nickname null o vuoto")
@@ -391,10 +375,6 @@ class DBManagerTest {
 		assertEquals(1, result.getData().getCardQuantity(101));
 		verify(mockUsersCollection, never()).find(any(Bson.class));
 	}
-
-	// =========================================================================
-	// 5. disenchantCard
-	// =========================================================================
 
 	@Test
 	@DisplayName("disenchantCard: fallito per nickname null o vuoto")
@@ -491,10 +471,6 @@ class DBManagerTest {
 
 		verify(mockUsersCollection, never()).find(any(Bson.class));
 	}
-
-	// =========================================================================
-	// 6. Gestione trasversale MongoException
-	// =========================================================================
 
 	@Test
 	@DisplayName("Gestisce MongoException restituendo DB_ERROR su tutte le operazioni")
