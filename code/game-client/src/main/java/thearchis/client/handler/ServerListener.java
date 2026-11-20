@@ -15,7 +15,7 @@ import thearchis.common.message.OperationStatus;
 
 public class ServerListener implements Runnable {
 
-	private static final Logger logger = LogManager.getLogger(ServerListener.class);
+	private static final Logger logger = LogManager.getLogger("[ServerListener]");
 	private final ObjectInputStream in;
 	private final Client client;
 	private volatile boolean running = true;
@@ -34,14 +34,14 @@ public class ServerListener implements Runnable {
 				if (obj instanceof Message msg) {
 					processMessage(msg);
 				} else {
-					logger.warn("Oggetto ricevuto non riconosciuto: {}", obj.getClass().getName());
+					logger.warn("run : Oggetto ricevuto non riconosciuto ({}).", obj.getClass().getName());
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
 			if (!running) { // Disconnessione avviata volontariamente dal Client
-				logger.info("ServerListener arrestato correttamente.");
+				logger.info("run : ServerListener arrestato correttamente.");
 			} else {
-				logger.error("Comunicazione con il Server persa in modo inatteso ({}).", e.getMessage());
+				logger.error("run : Comunicazione con il Server persa in modo inatteso ({}).", e.getMessage());
 			}
 		} finally {
 			if (running) {
@@ -56,12 +56,12 @@ public class ServerListener implements Runnable {
 
 	private void processMessage(Message msg) {
 		if (msg == null) {
-			logger.warn("Message null ricevuto dal server: non processato.");
+			logger.warn("processMessage : Message null ricevuto dal server, non processato.");
 			return;
 		}
 
 		if (msg.getType() == null) {
-			logger.warn("Message con MessageType null ricevuto dal server: non processato.");
+			logger.warn("processMessage : Message con MessageType null ricevuto dal server, non processato.");
 			return;
 		}
 
@@ -74,7 +74,7 @@ public class ServerListener implements Runnable {
 
 		case BACKNAVIGATION_RESPONSE -> handleBackNavigationResponse(msg);
 
-		default -> logger.warn("MessageType non gestito: {}.", msg.getType());
+		default -> logger.warn("processMessage : MessageType {} non gestito, non processato.", msg.getType());
 		}
 
 	}
@@ -86,14 +86,14 @@ public class ServerListener implements Runnable {
 		}
 
 		OperationStatus status = result.getStatus();
-		logger.info("Esito registrazione: {}", status);
+		logger.info("handleRegisterResponse : Esito REGISTER_REQUEST -> {}.", status);
 
 		switch (status) {
-		case REGISTER_OK -> System.out.println("[GUI] Registrazione: registrazione riuscita.");
-		case NICKNAME_ALREADY_EXISTS -> System.out.println("[GUI] Registrazione: nickname già esistente.");
-		case BAD_REQUEST -> System.out.println("[GUI] Registrazione: richiesta non valida.");
-		case DB_ERROR -> System.out.println("[GUI] Registrazione: errore del server/database.");
-		default -> System.out.println("[GUI] Registrazione: risposta sconosciuta.");
+		case REGISTER_OK -> System.out.println("[GUI] Registrazione : registrazione riuscita.");
+		case NICKNAME_ALREADY_EXISTS -> System.out.println("[GUI] Registrazione : nickname già esistente.");
+		case BAD_REQUEST -> System.out.println("[GUI] Registrazione : richiesta non valida.");
+		case DB_ERROR -> System.out.println("[GUI] Registrazione : errore del server/database.");
+		default -> System.out.println("[GUI] Registrazione : risposta sconosciuta.");
 		}
 	}
 
@@ -104,25 +104,25 @@ public class ServerListener implements Runnable {
 		}
 		OperationStatus status = result.getStatus();
 
-		logger.info("Esito LOGIN_REQUEST: {}.", status);
+		logger.info("handleLoginResponse : Esito LOGIN_REQUEST -> {}.", status);
 
 		switch (status) {
 		case LOGIN_OK -> {
 			if (result.getData() instanceof Player player) {
-				System.out.println("[GUI] Login: login riuscito.");
+				System.out.println("[GUI] Login : login riuscito.");
 				client.setPlayer(player);
 			} else {
 				logger.fatal(
-						"ERRORE FATALE: Login dichiarato OK ma il payload ricevuto non contiene un oggetto Player valido. Disconnesione.");
+						"[GUI] ERRORE FATALE : Login : Login dichiarato OK ma il payload ricevuto non contiene un oggetto Player valido. Disconnesione.");
 				client.serverDisconnection();
 				return;
 			}
 		}
-		case INVALID_CREDENTIALS -> System.out.println("[GUI] Login: credenziali errate.");
-		case ALREADY_LOGGED_IN -> System.out.println("[GUI] Login: utente già loggato.");
-		case BAD_REQUEST -> System.out.println("[GUI] Login: richiesta non valida.");
-		case DB_ERROR -> System.out.println("[GUI] Login: errore del server/database.");
-		default -> System.out.println("[GUI] Login: risposta sconosciuta.");
+		case INVALID_CREDENTIALS -> System.out.println("[GUI] Login : credenziali errate.");
+		case ALREADY_LOGGED_IN -> System.out.println("[GUI] Login : utente già loggato.");
+		case BAD_REQUEST -> System.out.println("[GUI] Login : richiesta non valida.");
+		case DB_ERROR -> System.out.println("[GUI] Login : errore del server/database.");
+		default -> System.out.println("[GUI] Login : risposta sconosciuta.");
 		}
 	}
 
@@ -133,29 +133,30 @@ public class ServerListener implements Runnable {
 		}
 		OperationStatus status = result.getStatus();
 
-		logger.info("Esito COLLECTION_REQUEST: {}.", status);
+		logger.info("handleCollectionResponse : Esito COLLECTION_REQUEST -> {}.", status);
 
 		switch (status) {
 		case COLLECTION_OK -> {
 			if (!(result.getData() instanceof Collection collection)) {
 				logger.fatal(
-						"ERRORE FATALE: Collezione OK ma il payload ricevuto non contiene una Collection valida. Disconnessione.");
+						"[GUI] ERRORE FATALE : Collezione : Collezione OK ma il payload ricevuto non contiene una Collection valida. Disconnessione.");
 				client.serverDisconnection();
 				return;
 			}
 
 			if (client.getPlayer() == null) {
-				logger.fatal("ERRORE FATALE: Collectio valida ma l'oggetto Player locale è null. Disconnessione.");
+				logger.fatal(
+						"[GUI] ERRORE FATALE : Collezione : Collection valida ma l'oggetto Player locale è null. Disconnessione.");
 				client.serverDisconnection();
 				return;
 			}
 
 			client.getPlayer().setCollection(collection);
-			System.out.println("[GUI] Collezione: collezione caricata con successo.");
+			System.out.println("[GUI] Collezione : collezione caricata con successo.");
 		}
-		case BAD_REQUEST -> System.out.println("[GUI] Collezione: richiesta non valida.");
-		case DB_ERROR -> System.out.println("[GUI] Collezione: errore del server/database.");
-		default -> System.out.println("[GUI] Collezione: risposta sconosciuta.");
+		case BAD_REQUEST -> System.out.println("[GUI] Collezione : richiesta non valida.");
+		case DB_ERROR -> System.out.println("[GUI] Collezione : errore del server/database.");
+		default -> System.out.println("[GUI] Collezione : risposta sconosciuta.");
 		}
 	}
 
@@ -166,24 +167,24 @@ public class ServerListener implements Runnable {
 		}
 		OperationStatus status = result.getStatus();
 
-		logger.info("Esito CRAFT_REQUEST: {}.", status);
+		logger.info("handleCraftResponse : Esito CRAFT_REQUEST -> {}.", status);
 
 		switch (status) {
 		case CRAFT_OK -> {
 			if (result.getData() instanceof Player player) {
-				System.out.println("[GUI] Craft: carta creata con successo.");
+				System.out.println("[GUI] Craft : carta creata con successo.");
 				client.setPlayer(player);
 			} else {
 				logger.fatal(
-						"ERRORE FATALE: Craft OK ma il payload ricevuto non contiene un oggetto Player valido. Disconnessione.");
+						"[GUI] ERRORE FATALE : Craft : Craft OK ma il payload ricevuto non contiene un oggetto Player valido. Disconnessione.");
 				client.serverDisconnection();
 				return;
 			}
 		}
-		case NOT_ENOUGH_DUST -> System.out.println("[GUI] Craft: polvere insufficiente.");
-		case BAD_REQUEST -> System.out.println("[GUI] Craft: richiesta non valida.");
-		case DB_ERROR -> System.out.println("[GUI] Craft: errore del server/database.");
-		default -> System.out.println("[GUI] Craft: risposta sconosciuta.");
+		case NOT_ENOUGH_DUST -> System.out.println("[GUI] Craft : polvere insufficiente.");
+		case BAD_REQUEST -> System.out.println("[GUI] Craft : richiesta non valida.");
+		case DB_ERROR -> System.out.println("[GUI] Craft : errore del server/database.");
+		default -> System.out.println("[GUI] Craft : risposta sconosciuta.");
 		}
 	}
 
@@ -194,24 +195,24 @@ public class ServerListener implements Runnable {
 		}
 		OperationStatus status = result.getStatus();
 
-		logger.info("Esito DISENCHANT_REQUEST: {}.", status);
+		logger.info("handleDisenchantResponse : Esito DISENCHANT_REQUEST -> {}.", status);
 
 		switch (status) {
 		case DISENCHANT_OK -> {
 			if (result.getData() instanceof Player player) {
-				System.out.println("[GUI] Disenchant: carta disincantata con successo.");
+				System.out.println("[GUI] Disenchant : carta disincantata con successo.");
 				client.setPlayer(player);
 			} else {
 				logger.fatal(
-						"ERRORE FATALE: Disenchant OK ma il payload ricevuto non contiene un oggetto Player valido. Disconnessione.");
+						"[GUI] ERRORE FATALE : Disenchant : Disenchant OK ma il payload ricevuto non contiene un oggetto Player valido. Disconnessione.");
 				client.serverDisconnection();
 				return;
 			}
 		}
-		case CARD_NOT_OWNED -> System.out.println("[GUI] Disenchant: carta non posseduta.");
-		case BAD_REQUEST -> System.out.println("[GUI] Disenchant: richiesta non valida.");
-		case DB_ERROR -> System.out.println("[GUI] Disenchant: errore del server/database.");
-		default -> System.out.println("[GUI] Disenchant: risposta sconosciuta.");
+		case CARD_NOT_OWNED -> System.out.println("[GUI] Disenchant : carta non posseduta.");
+		case BAD_REQUEST -> System.out.println("[GUI] Disenchant : richiesta non valida.");
+		case DB_ERROR -> System.out.println("[GUI] Disenchant : errore del server/database.");
+		default -> System.out.println("[GUI] Disenchant : risposta sconosciuta.");
 		}
 	}
 
@@ -222,21 +223,21 @@ public class ServerListener implements Runnable {
 		}
 		OperationStatus status = result.getStatus();
 
-		logger.info("Esito BACKNAVIGATION_REQUEST: {}.", status);
+		logger.info("handleBackNavigationResponse : Esito BACKNAVIGATION_REQUEST -> {}.", status);
 
 		switch (status) {
 		case BACKNAVIGATION_OK -> {
 			if (result.getData() instanceof ClientState destination) {
-				System.out.println("[GUI] BackNavigation: arrivato a " + destination + " con successo.");
+				System.out.println("[GUI] BackNavigation : arrivato a " + destination + " con successo.");
 			} else {
 				logger.fatal(
-						"ERRORE FATALE: Navigazione dichiarata OK ma il payload ricevuto non contiene un oggetto ClientState valido. Disconnesione.");
+						"[GUI] ERRORE FATALE : BackNavigation : Navigazione dichiarata OK ma il payload ricevuto non contiene un oggetto ClientState valido. Disconnesione.");
 				client.serverDisconnection();
 				return;
 			}
 		}
-		case BAD_REQUEST -> System.out.println("[GUI] BackNavigation: richiesta non valida.");
-		default -> System.out.println("[GUI] BackNavigation: risposta sconosciuta.");
+		case BAD_REQUEST -> System.out.println("[GUI] BackNavigation : richiesta non valida.");
+		default -> System.out.println("[GUI] BackNavigation : risposta sconosciuta.");
 		}
 	}
 
@@ -246,17 +247,19 @@ public class ServerListener implements Runnable {
 	@SuppressWarnings("unchecked")
 	private <T> OperationResult<T> extractAndValidateResult(Message msg) {
 		if (msg.getData() == null) {
-			logger.warn("Message con payload null ricevuto dal server: non processato.");
+			logger.warn("extractAndValidateResult : Message con payload null ricevuto dal server, non processato.");
 			return null;
 		}
 
 		if (!(msg.getData() instanceof OperationResult<?> result)) {
-			logger.warn("Message con payload non di tipo OperationResult<> ricevuto dal server: non processato.");
+			logger.warn(
+					"extractAndValidateResult : Message con payload non di tipo OperationResult<> ricevuto dal server, non processato.");
 			return null;
 		}
 
 		if (result.getStatus() == null) {
-			logger.warn("OperationResult<> con status null ricevuto dal server: non processato.");
+			logger.warn(
+					"extractAndValidateResult : OperationResult<> con status null ricevuto dal server, non processato.");
 			return null;
 		}
 

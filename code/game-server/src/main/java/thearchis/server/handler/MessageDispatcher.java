@@ -49,14 +49,14 @@ public class MessageDispatcher {
 		ClientState currentClientState = clientHandler.getClientState();
 
 		if (!(msg.getType() instanceof MessageType type)) {
-			logger.warn("Client #{} : messaggio non di tipo MessageType ricevuto.", clientId);
+			logger.warn("Client #{} : dispatch : Messaggio non di tipo MessageType ricevuto.", clientId);
 			sendBadRequestResponse(clientHandler, null);
 			return;
 		}
 
 		if (!isAllowedInState(type, currentClientState)) {
-			logger.warn("Client #{} : tentativo non autorizzato di inviare {} nello stato {}.", clientId, type,
-					currentClientState);
+			logger.warn("Client #{} : dispatch : Tentativo non autorizzato di inviare {} nello stato {}.", clientId,
+					type, currentClientState);
 
 			sendBadRequestResponse(clientHandler, type);
 			return;
@@ -70,7 +70,7 @@ public class MessageDispatcher {
 		case DISENCHANT_REQUEST -> collectionController.handleDisenchantRequest(clientHandler, msg);
 		case BACKNAVIGATION_REQUEST -> backNavigationController.handleBackNavigationRequest(clientHandler, msg);
 
-		default -> logger.error("Client #{} : tipo di messaggio sconosciuto ({}).", clientId, type);
+		default -> logger.error("Client #{} : dispatch : tipo di messaggio ({}) sconosciuto.", clientId, type);
 		}
 	}
 

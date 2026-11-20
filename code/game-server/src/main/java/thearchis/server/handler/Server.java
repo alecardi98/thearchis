@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server implements Runnable {
 
-	private static final Logger logger = LogManager.getLogger(Server.class);
+	private static final Logger logger = LogManager.getLogger("[Server]");
 	private static Server instance;
 	private final int port = 443;
 	private ServerSocket serverSocket;
@@ -43,27 +43,27 @@ public class Server implements Runnable {
 		dbConnection();
 		try {
 			serverSocket = new ServerSocket(port);
-			logger.info("Server in ascolto sulla porta {}: in attesa di connessioni...", port);
+			logger.info("run : Server in attesa di connessioni sulla porta {} ...", port);
 
 			while (running) {
 				try {
 					Socket clientSocket = serverSocket.accept();
-					logger.info("Nuova connessione da {} accettata.", clientSocket.getInetAddress());
+					logger.info("run : Nuova connessione accettata (IP {}).", clientSocket.getInetAddress());
 
 					clientThreadPool.submit(() -> initializeClient(clientSocket));
 
 				} catch (SocketException e) {
 					if (!running) {
-						logger.info("ServerSocket chiuso per arresto del server.");
+						logger.info("run : ServerSocket chiuso per arresto del server.");
 						break;
 					}
-					logger.error("Errore di socket durante l'accept: {}", e.getMessage());
+					logger.error("run : Errore di socket durante l'accept ({}).", e.getMessage());
 				} catch (IOException e) {
-					logger.error("Errore I/O durante l'accept: {}", e.getMessage());
+					logger.error("run : Errore I/O durante l'accept ({}).", e.getMessage());
 				}
 			}
 		} catch (IOException e) {
-			logger.fatal("Impossibile aprire il ServerSocket sulla porta {}: {}", port, e.getMessage());
+			logger.fatal("run : Impossibile aprire il ServerSocket sulla porta {} ({}).", port, e.getMessage());
 		} finally {
 			stopServer();
 		}
@@ -81,12 +81,12 @@ public class Server implements Runnable {
 		try {
 			clientHandler.init();
 			activeClients.put(clientId, clientHandler);
-			logger.info("Client #{} : collegato con successo.", clientId);
+			logger.info("Client #{} : initializeClient : Client inizializzato con successo.", clientId);
 
 			clientThreadPool.submit(clientHandler);
 
 		} catch (IOException e) {
-			logger.error("Client #{} : errore durante l'handshake ({})", clientId, e.getMessage());
+			logger.error("Client #{} : initializeClient : Errore durante l'handshake ({}).", clientId, e.getMessage());
 			removeClient(clientId);
 			clientHandler.cleanUp();
 		}
@@ -96,15 +96,17 @@ public class Server implements Runnable {
 		ClientHandler clientHandler = activeClients.remove(clientId);
 
 		if (clientHandler != null) {
-			logger.info("Client #{} : rimosso dai client attivi.", clientId);
+			logger.info("Client #{} : removeClient : Client rimosso dai client attivi.", clientId);
 
 			if (clientHandler.getPlayer() != null && clientHandler.getPlayer().getNickname() != null) {
 				String nickname = clientHandler.getPlayer().getNickname();
 				authenticatedUsers.remove(nickname);
-				logger.info("Client #{} : autenticazione utente '{}' rimossa.", clientId, nickname);
+				logger.info("Client #{} : removeClient : Autenticazione utente {} rimossa.", clientId, nickname);
 			}
 		} else {
-			logger.warn("Client #{} : non trovato tra i client attivi al momento della rimozione.", clientId);
+			logger.warn(
+					"Client #{} : removeClient : Client non trovato tra i client attivi al momento della rimozione.",
+					clientId);
 		}
 	}
 
@@ -113,7 +115,7 @@ public class Server implements Runnable {
 			return;
 
 		running = false;
-		logger.info("Arresto del server in corso...");
+		logger.info("stopServer : Arresto del server in corso...");
 
 		activeClients.values().forEach(ClientHandler::cleanUp);
 		activeClients.clear();
@@ -122,14 +124,14 @@ public class Server implements Runnable {
 			try {
 				serverSocket.close();
 			} catch (IOException e) {
-				logger.error("Errore durante la chiusura del ServerSocket: {}", e.getMessage());
+				logger.error("stopServer : Errore durante la chiusura del ServerSocket ({}).", e.getMessage());
 			}
 		}
 
 		clientThreadPool.shutdown();
 		dbManager.dbClose();
 
-		logger.info("Server arrestato e risorse liberate.");
+		logger.info("stopServer : Server arrestato con successo.");
 	}
 
 	public boolean isUserAuthenticated(String nickname) {

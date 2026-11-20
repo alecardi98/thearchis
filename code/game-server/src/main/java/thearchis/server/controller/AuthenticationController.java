@@ -22,10 +22,11 @@ public class AuthenticationController {
 
 	public void handleRegister(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
-		logger.info("Client #{} : ricevuta richiesta di registrazione.", clientId);
+		logger.info("Client #{} : handleRegister : Ricevuta richiesta di registrazione.", clientId);
 
 		if (!(msg.getData() instanceof AuthenticationData)) {
-			logger.warn("Client #{} : richiesta registrazione rifiutata (payload non di tipo AuthenticationData).",
+			logger.warn(
+					"Client #{} : handleRegister : Richiesta registrazione rifiutata (payload non di tipo AuthenticationData).",
 					clientId);
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
@@ -37,7 +38,8 @@ public class AuthenticationController {
 		String password = userData.getPassword();
 
 		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
-			logger.warn("Client #{} : richiesta registrazione rifiutata (credenziali null o vuote).", clientId);
+			logger.warn("Client #{} : handleRegister : Richiesta registrazione rifiutata (credenziali null o vuote).",
+					clientId);
 			OperationResult<Void> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 			return;
@@ -47,15 +49,17 @@ public class AuthenticationController {
 		clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 
 		OperationStatus status = result.getStatus();
-		logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
+		logger.info("Client #{} : handleRegister : Esito registrazione inviato (status {}).", clientId, status);
 	}
 
 	public void handleLogin(ClientHandler clientHandler, Message msg) {
 		int clientId = clientHandler.getClientId();
-		logger.info("Client #{} : ricevuta richiesta di login.", clientId);
+		logger.info("Client #{} : handleLogin : Ricevuta richiesta di login.", clientId);
 
 		if (!(msg.getData() instanceof AuthenticationData)) {
-			logger.warn("Client #{} : richiesta login rifiutata (payload non di tipo AuthenticationData).", clientId);
+			logger.warn(
+					"Client #{} : handleLogin : Richiesta login rifiutata (payload non di tipo AuthenticationData).",
+					clientId);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
@@ -66,7 +70,7 @@ public class AuthenticationController {
 		String password = userData.getPassword();
 
 		if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
-			logger.warn("Client #{} : richiesta login rifiutata (credenziali null o vuote).", clientId);
+			logger.warn("Client #{} : handleLogin : Richiesta login rifiutata (credenziali null o vuote).", clientId);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
@@ -74,7 +78,7 @@ public class AuthenticationController {
 
 		Server server = Server.getInstance();
 		if (server.isUserAuthenticated(nickname)) {
-			logger.warn("Client #{} : utente '{}' già autenticato.", clientId, nickname);
+			logger.warn("Client #{} : handleLogin : Utente {} già autenticato.", clientId, nickname);
 			OperationResult<Player> result = new OperationResult<>(OperationStatus.ALREADY_LOGGED_IN, null);
 			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
 			return;
@@ -91,6 +95,6 @@ public class AuthenticationController {
 		}
 
 		clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, result));
-		logger.info("Client #{} : esito login inviato (status '{}')", clientId, status);
+		logger.info("Client #{} : handleLogin : Esito login inviato (status {}).", clientId, status);
 	}
 }

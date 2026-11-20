@@ -40,7 +40,7 @@ public class MasterSet {
 	private void loadCardsFromJson() {
 		try (InputStream inputStream = getClass().getResourceAsStream(CARDS_FILE_PATH)) {
 			if (inputStream == null) {
-				logger.fatal("Impossibile trovare il file delle carte: {}", CARDS_FILE_PATH);
+				logger.fatal("loadCardsFromJson : Impossibile trovare il file delle carte {}.", CARDS_FILE_PATH);
 				throw new RuntimeException("File " + CARDS_FILE_PATH + " non trovato nel classpath.");
 			}
 
@@ -94,16 +94,17 @@ public class MasterSet {
 					} catch (InvalidCardDataException e) {
 						throw e;
 					} catch (Exception e) {
-						throw new InvalidCardDataException(id, "Formato JSON non valido: " + e.getMessage());
+						throw new InvalidCardDataException(id, "Formato JSON non valido: " + e.getMessage() + ".");
 					}
 				}
-				logger.info("MasterSet caricato con successo: {} carte presenti in memoria.", cardsMap.size());
+				logger.info("loadCardsFromJson : MasterSet caricato con successo ({} carte).", cardsMap.size());
 			}
 		} catch (InvalidCardDataException e) {
-			logger.fatal("Caricamento MasterSet INTERROTTO: {}", e.getMessage());
+			logger.fatal("loadCardsFromJson : Caricamento MasterSet interrotto ({}).", e.getMessage());
 			throw e;
 		} catch (Exception e) {
-			logger.fatal("Errore critico durante la lettura del file JSON delle carte: {}", e.getMessage(), e);
+			logger.fatal("loadCardsFromJson : Errore critico durante la lettura del file JSON delle carte ({}).",
+					e.getMessage(), e);
 			throw new RuntimeException("Impossibile caricare il catalogo carte da JSON.", e);
 		}
 	}

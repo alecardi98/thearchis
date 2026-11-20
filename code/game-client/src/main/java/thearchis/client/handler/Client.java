@@ -18,7 +18,7 @@ import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.CollectionData;
 
 public class Client {
-	private static final Logger logger = LogManager.getLogger(Client.class);
+	private static final Logger logger = LogManager.getLogger("[Client]");
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	private Socket socket;
@@ -41,7 +41,7 @@ public class Client {
 	private void serverConnection() {
 		try {
 			socket = new Socket(HOST, PORT);
-			logger.info("Client connesso al server");
+			logger.info("serverConnection : Client connesso al server.");
 
 			out = new ObjectOutputStream(socket.getOutputStream());
 			out.flush();
@@ -50,13 +50,15 @@ public class Client {
 			serverListener = new ServerListener(in, this);
 			new Thread(serverListener, "ServerListener-Thread").start();
 		} catch (IOException e) {
-			logger.error("Impossibile connettersi al server, chiusura risorse ({}).", e.getMessage());
+			logger.error("serverConnection : Impossibile connettersi al server, chiusura risorse ({}).",
+					e.getMessage());
 			// Chiusura di sicurezza se il socket si era aperto ma gli stream sono falliti
 			if (socket != null && !socket.isClosed()) {
 				try {
 					socket.close();
 				} catch (IOException ex) {
-					logger.debug("Errore durante la chiusura del socket post-fallimento: {}", ex.getMessage());
+					logger.debug("serverConnection : Errore durante la chiusura del socket post-fallimento ({}).",
+							ex.getMessage());
 				}
 			}
 			System.exit(1);
@@ -80,35 +82,37 @@ public class Client {
 			if (socket != null && !socket.isClosed())
 				socket.close();
 
-			logger.info("Disconnessione dal server completata con successo.");
+			logger.info("serverDisconnection : Client disconnesso dal server con successo.");
 		} catch (IOException e) {
-			logger.error("Errore durante la chiusura delle risorse di rete: {}", e.getMessage());
+			logger.error("serverDisconnection : Errore durante la chiusura delle risorse di rete ({}).",
+					e.getMessage());
 		}
 	}
 
 	public synchronized void sendMessage(Object msg) {
 		if (msg == null) {
-			logger.warn("Impossibile inviare il messaggio (messaggio null).");
+			logger.warn("sendMessage : Impossibile inviare il messaggio (messaggio null).");
 			return;
 		}
 
 		if (out == null || socket == null || socket.isClosed() || !socket.isConnected()) {
-			logger.warn("Impossibile inviare il messaggio al server (socket chiuso o non connesso).");
+			logger.warn("sendMessage : Impossibile inviare il messaggio al server (socket chiuso o non connesso).");
 			return;
 		}
 
 		try {
 			out.writeObject(msg);
 			out.flush();
-			logger.debug("Messaggio inviato con successo");
+			logger.debug("sendMessage : Messaggio inviato con successo.");
 		} catch (IOException e) {
-			logger.error("Errore di I/O durante l'invio del messaggio ({})", e.getMessage());
+			logger.error("sendMessage : Errore di I/O durante l'invio del messaggio ({}).", e.getMessage());
 		}
 	}
 
 	public synchronized void sendRegisterRequest(String nickname, String password) {
 		if (nickname == null || password == null || nickname.isBlank() || password.isBlank()) {
-			logger.error("Errore sendRegisterRequest (credenziali non valide).");
+			logger.error(
+					"sendRegisterRequest : Errore nell'invio della richiesta di registrazione (credenziali non valide).");
 			return;
 		}
 		AuthenticationData authenticationData = new AuthenticationData(nickname, password);
@@ -118,7 +122,7 @@ public class Client {
 
 	public synchronized void sendLoginRequest(String nickname, String password) {
 		if (nickname == null || password == null || nickname.isBlank() || password.isBlank()) {
-			logger.error("Errore sendLoginRequest (credenziali non valide).");
+			logger.error("sendLoginRequest : Errore nell'invio della richiesta di login (credenziali non valide).");
 			return;
 		}
 		AuthenticationData authenticationData = new AuthenticationData(nickname, password);
@@ -134,7 +138,7 @@ public class Client {
 
 	public synchronized void sendCraftRequest(int cardId) {
 		if (cardId <= 0) {
-			logger.error("Errore sendCraftRequest (cardId non valido).");
+			logger.error("sendCraftRequest : Errore nell'invio della richiesta di craft (cardId non valido).");
 			return;
 		}
 		CollectionData collectionData = new CollectionData(cardId);
@@ -144,7 +148,8 @@ public class Client {
 
 	public synchronized void sendDisenchantRequest(int cardId) {
 		if (cardId <= 0) {
-			logger.error("Errore sendDisenchantRequest (cardId non valido).");
+			logger.error(
+					"sendDisenchantRequest : Errore nell'invio della richiesta di disenchant (cardId non valido).");
 			return;
 		}
 		CollectionData collectionData = new CollectionData(cardId);
@@ -154,7 +159,8 @@ public class Client {
 
 	public synchronized void sendBackNavigationRequest(ClientState destination) {
 		if (destination == null) {
-			logger.error("Errore sendBackNavigatioRequest (destination null).");
+			logger.error(
+					"sendBackNavigatioRequest : Errore nell'invio della richiesta di backnavigation (destination null).");
 			return;
 		}
 		BackNavigationData backNavigationData = new BackNavigationData(destination);

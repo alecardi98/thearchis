@@ -59,9 +59,8 @@ public class DBManager {
 			logger.info("dbConnect : URI Caricato dal file .env/ambiente.");
 
 			if (rawUri == null || rawUri.isBlank()) {
-				logger.fatal(
-						"dbConnect : Impossibile avviare il DB: CONNECTION_URI non trovata nel file .env o nelle variabili di sistema.");
-				throw new RuntimeException("Configurazione MongoDB mancante.");
+				logger.fatal("dbConnect : Impossibile avviare il DB (CONNECTION_URI non trovata nel file .env).");
+				throw new RuntimeException("dbConnect : Configurazione MongoDB mancante.");
 			}
 
 			String connectionUri = sanitizeSrvUri(rawUri);
@@ -78,7 +77,7 @@ public class DBManager {
 				logger.info("dbConnect : Connessione a MongoDB ({}) verificata e creata con successo.", DB_NAME);
 
 			} catch (Exception e) {
-				logger.fatal("dbConnect : Impossibile connettersi a MongoDB Atlas: {}", e.getMessage());
+				logger.fatal("dbConnect : Impossibile connettersi a MongoDB Atlas ({}).", e.getMessage());
 				dbClose();
 				throw new RuntimeException("dbConnect : Errore critico di connessione al Database.", e);
 			}
@@ -90,7 +89,7 @@ public class DBManager {
 			return uri;
 		}
 
-		logger.info("sanitizeSrvUri : Rilevato formato SRV: conversione dinamica ai nodi diretti dello shard.");
+		logger.info("sanitizeSrvUri : Rilevato formato SRV, conversione dinamica.");
 
 		int schemeEnd = uri.indexOf("://") + 3;
 		String afterScheme = uri.substring(schemeEnd);
@@ -208,7 +207,7 @@ public class DBManager {
 		try {
 			String nickname = userDoc.getString("nickname");
 			if (nickname == null || nickname.isBlank()) {
-				logger.error("parsePlayer : Documento utente corrotto ('nickname' mancante o vuoto).");
+				logger.error("parsePlayer : Documento corrotto ('nickname' mancante o vuoto).");
 				return null;
 			}
 
@@ -247,7 +246,7 @@ public class DBManager {
 		try {
 			Document cardsDoc = collectionDoc.get("cards", Document.class);
 			if (cardsDoc == null) {
-				logger.error("parseCollection : Sotto-documento 'collection' corrotto (campo 'cards' mancante).");
+				logger.error("parseCollection : Sotto-documento 'collection' corrotto ('cards' mancante).");
 				return null;
 			}
 
@@ -262,16 +261,16 @@ public class DBManager {
 						collection.addCard(cardId);
 					}
 				} catch (NumberFormatException e) {
-					logger.warn("parseCollection : ID carta #{} non valido nella collezione.", entry.getKey());
+					logger.warn("parseCollection : Errore ID carta #{} non valido nella collezione.", entry.getKey());
 				} catch (ClassCastException e) {
-					logger.warn("parseCollection : Valore quantità {} per carta #{} non valido.", entry.getValue(),
-							entry.getKey());
+					logger.warn("parseCollection : Errore valore quantità {} per carta #{} non valido.",
+							entry.getValue(), entry.getKey());
 				}
 			}
 			return collection;
 
 		} catch (ClassCastException e) {
-			logger.error("parseCollection : Tipo non valido in 'collection' ({}).", e.getMessage());
+			logger.error("parseCollection : Errore tipo non valido in 'collection' ({}).", e.getMessage());
 			return null;
 		}
 	}
@@ -291,7 +290,7 @@ public class DBManager {
 			try {
 				String heroStr = deckDoc.getString("hero");
 				if (heroStr == null || heroStr.isBlank()) {
-					logger.warn("parseDeck : HeroName del mazzo non specificato.");
+					logger.warn("parseDeck : Errore HeroName del mazzo non specificato.");
 					continue;
 				}
 
@@ -300,7 +299,7 @@ public class DBManager {
 
 				Document cardsDoc = deckDoc.get("cards", Document.class);
 				if (cardsDoc == null) {
-					logger.warn("Mazzo {} : parseDeck : mazzo vuoto.", heroStr);
+					logger.warn("Mazzo {} : parseDeck : Errore mazzo vuoto.", heroStr);
 					decks.add(deck);
 					continue;
 				}
@@ -314,16 +313,16 @@ public class DBManager {
 							deck.addCard(cardId, quantity);
 						}
 					} catch (NumberFormatException e) {
-						logger.warn("Mazzo {} : parseDeck : ID carta #{} non valido.", heroStr, entry.getKey());
+						logger.warn("Mazzo {} : parseDeck : Errore ID carta #{} non valido.", heroStr, entry.getKey());
 					} catch (ClassCastException e) {
-						logger.warn("Mazzo {} : parseDeck : Quantità {} non valida per carta #{}.", heroStr,
+						logger.warn("Mazzo {} : parseDeck : Errore quantità {} non valida per carta #{}.", heroStr,
 								entry.getValue(), entry.getKey());
 					}
 				}
 				decks.add(deck);
 
 			} catch (IllegalArgumentException e) {
-				logger.warn("parseDeck : HeroName {} non valido.", deckDoc.getString("hero"));
+				logger.warn("parseDeck : Errore HeroName {} non valido.", deckDoc.getString("hero"));
 			} catch (Exception e) {
 				logger.error("parseDeck : Errore imprevisto durante il parsing di un mazzo ({}).", e.getMessage());
 			}
@@ -346,7 +345,7 @@ public class DBManager {
 			Document userDoc = users.find(Filters.eq("nickname", nickname)).first();
 
 			if (userDoc == null) {
-				logger.warn("Utente {} : getCollection : recupero collezione fallito (utente non trovato).", nickname);
+				logger.warn("Utente {} : getCollection : Recupero collezione fallito (utente non trovato).", nickname);
 				OperationResult<Collection> result = new OperationResult<>(OperationStatus.BAD_REQUEST, null);
 				return result;
 			}
@@ -507,7 +506,7 @@ public class DBManager {
 				return new OperationResult<>(OperationStatus.DB_ERROR, null);
 			}
 
-			logger.info("Utente {} : disenchantCard : Carta #{} disincantata con successo (Nuova polvere: {}).",
+			logger.info("Utente {} : disenchantCard : Carta #{} disincantata con successo (nuova polvere: {}).",
 					nickname, cardId, updatedCollection.getDust());
 			return new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection);
 
