@@ -3,11 +3,8 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.db.DBStatus;
-import thearchis.common.message.Message;
-import thearchis.common.message.MessageType;
-import thearchis.common.message.UserData;
-import thearchis.server.db.DBManager;
+import thearchis.server.db.MongoDBManager;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -20,20 +17,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server implements Runnable {
 
-	private static final Logger logger = LogManager.getLogger(Server.class);
-	private static Server server; // (Singleton)
+	private static final Logger logger = LogManager.getLogger("[Server]");
+	private static Server instance;
 	private final int port = 443;
 	private ServerSocket serverSocket;
 	private volatile boolean running = true;
 
-	private DBManager dbManager;
-
+	private MongoDBManager mongoDBManager;
 	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>(); // idclient,clienthandler
 	private final AtomicInteger idGenerator = new AtomicInteger(1);
 	private final ExecutorService clientThreadPool = Executors.newCachedThreadPool();
-	private final ConcurrentMap<String, Integer> loggedUsers = new ConcurrentHashMap<>(); // nickname,idclient
+	private final ConcurrentMap<String, Integer> authenticatedUsers = new ConcurrentHashMap<>(); // nickname,idclient
 
 	private Server() {
+	}
+
+	public static synchronized Server getInstance() {
+		if (instance == null) {
+			instance = new Server();
+		}
+		return instance;
 	}
 
 	@Override
@@ -41,54 +44,50 @@ public class Server implements Runnable {
 		dbConnection();
 		try {
 			serverSocket = new ServerSocket(port);
-			logger.info("Server in ascolto sulla porta {}: in attesa di connessioni...", port);
+			logger.info("run : Server in attesa di connessioni sulla porta {} ...", port);
 
 			while (running) {
 				try {
 					Socket clientSocket = serverSocket.accept();
-					logger.info("Nuova connessione da {} accettata.", clientSocket.getInetAddress());
+					logger.info("run : Nuova connessione accettata (IP {}).", clientSocket.getInetAddress());
 
-					// libero il thread del server per gestire il client con un nuovo thread
 					clientThreadPool.submit(() -> initializeClient(clientSocket));
 
 				} catch (SocketException e) {
 					if (!running) {
-						logger.info("ServerSocket chiuso per arresto del server.");
+						logger.info("run : ServerSocket chiuso per arresto del server.");
 						break;
 					}
-					logger.error("Errore di socket durante l'accept: {}", e.getMessage());
+					logger.error("run : Errore di socket durante l'accept ({}).", e.getMessage());
 				} catch (IOException e) {
-					logger.error("Errore I/O durante l'accept: {}", e.getMessage());
+					logger.error("run : Errore I/O durante l'accept ({}).", e.getMessage());
 				}
 			}
 		} catch (IOException e) {
-			logger.fatal("Impossibile aprire il ServerSocket sulla porta {}: {}", port, e.getMessage());
+			logger.fatal("run : Impossibile aprire il ServerSocket sulla porta {} ({}).", port, e.getMessage());
 		} finally {
 			stopServer();
 		}
 	}
 
-	/*
-	 * Connessione al database
-	 */
 	private void dbConnection() {
-		dbManager = new DBManager();
-		dbManager.connect();
+		mongoDBManager = new MongoDBManager();
+		mongoDBManager.dbConnect();
 	}
 
 	private void initializeClient(Socket socket) {
-		int clientId = idGenerator.getAndIncrement(); // assegnazione id con AtomicInteger
+		int clientId = idGenerator.getAndIncrement();
 		ClientHandler clientHandler = new ClientHandler(socket, clientId);
 
 		try {
 			clientHandler.init();
-			activeClients.put(clientId, clientHandler); // mappo il nuovo clienthandler
-			logger.info("Client #{} : collegato con successo.", clientId);
+			activeClients.put(clientId, clientHandler);
+			logger.info("Client #{} : initializeClient : Client inizializzato con successo.", clientId);
 
-			clientThreadPool.submit(clientHandler); // nuovo thread per il clientHandler
+			clientThreadPool.submit(clientHandler);
 
 		} catch (IOException e) {
-			logger.error("Client #{} : errore durante l'handshake ({})", clientId, e.getMessage());
+			logger.error("Client #{} : initializeClient : Errore durante l'handshake ({}).", clientId, e.getMessage());
 			removeClient(clientId);
 			clientHandler.cleanUp();
 		}
@@ -98,15 +97,17 @@ public class Server implements Runnable {
 		ClientHandler clientHandler = activeClients.remove(clientId);
 
 		if (clientHandler != null) {
-			logger.info("Client #{} : rimosso dai client attivi.", clientId);
+			logger.info("Client #{} : removeClient : Client rimosso dai client attivi.", clientId);
 
-			String nickname = clientHandler.getNickname();
-			if (nickname != null) { // client autenticato
-				loggedUsers.remove(nickname);
-				logger.info("Client #{} : autenticazione utente '{}' rimossa.", nickname, clientId);
+			if (clientHandler.getPlayer() != null && clientHandler.getPlayer().getNickname() != null) {
+				String nickname = clientHandler.getPlayer().getNickname();
+				authenticatedUsers.remove(nickname);
+				logger.info("Client #{} : removeClient : Autenticazione utente {} rimossa.", clientId, nickname);
 			}
 		} else {
-			logger.warn("Client #{} : non trovato tra i client attivi al momento della rimozione.", clientId);
+			logger.warn(
+					"Client #{} : removeClient : Client non trovato tra i client attivi al momento della rimozione.",
+					clientId);
 		}
 	}
 
@@ -115,87 +116,41 @@ public class Server implements Runnable {
 			return;
 
 		running = false;
-		logger.info("Arresto del server in corso...");
+		logger.info("stopServer : Arresto del server in corso...");
 
-		activeClients.values().forEach(ClientHandler::cleanUp); // chiudo le connessioni dei client (in, out, socket)
-		activeClients.clear(); // svuoto la mappa
+		activeClients.values().forEach(ClientHandler::cleanUp);
+		activeClients.clear();
 
 		if (serverSocket != null && !serverSocket.isClosed()) {
 			try {
 				serverSocket.close();
 			} catch (IOException e) {
-				logger.error("Errore durante la chiusura del ServerSocket: {}", e.getMessage());
+				logger.error("stopServer : Errore durante la chiusura del ServerSocket ({}).", e.getMessage());
 			}
 		}
 
-		clientThreadPool.shutdown(); // chiuso la pool di thread
-		dbManager.close();
+		clientThreadPool.shutdown();
+		mongoDBManager.dbClose();
 
-		logger.info("Server arrestato e risorse liberate.");
+		logger.info("stopServer : Server arrestato con successo.");
 	}
 
-	public void handleRegister(int clientId, Message msg) {
-		UserData userData = (UserData) msg.getData();
-		String nickname = userData.getNickname();
-		String password = userData.getPassword();
-
-		logger.info("Client #{} : ricevuta richiesta di registrazione (nickname '{}')", clientId, nickname);
-
-		DBStatus status = dbManager.registerUser(nickname, password);
-		ClientHandler clientHandler = activeClients.get(clientId);
-		if (clientHandler != null) {
-			Message responseMsg = new Message(MessageType.REGISTER_RESPONSE, status);
-			clientHandler.sendMessage(responseMsg);
-			logger.info("Client #{} : esito registrazione inviato (status '{}')", clientId, status);
-		} else {
-			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
-		}
+	public boolean isUserAuthenticated(String nickname) {
+		return authenticatedUsers.containsKey(nickname);
 	}
 
-	public void handleLogin(int clientId, Message msg) {
-		UserData userData = (UserData) msg.getData();
-		String nickname = userData.getNickname();
-		String password = userData.getPassword();
-
-		logger.info("Client #{} : ricevuta richiesta di login (nickname '{}')", clientId, nickname);
-		ClientHandler clientHandler = activeClients.get(clientId);
-
-		if (clientHandler != null) {
-
-			if (loggedUsers.containsValue(clientId)) { // socket già autenticato
-				logger.warn("Client #{} : tentativo di login rifiutato (socket già autenticato).", clientId);
-				clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
-				return;
-			}
-
-			if (loggedUsers.containsKey(nickname)) { // nickname già loggato altrove
-				logger.info("Client #{} : nickname '{}' già autenticato altrove.", clientId, nickname);
-				clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, DBStatus.ALREADY_LOGGED_IN));
-				return;
-			}
-
-			DBStatus status = dbManager.loginUser(nickname, password);
-
-			if (status == DBStatus.LOGIN_OK) {
-				clientHandler.setNickname(nickname);
-				loggedUsers.put(nickname, clientId);
-			}
-
-			clientHandler.sendMessage(new Message(MessageType.LOGIN_RESPONSE, status));
-			logger.info("Client #{} : esito login inviato (status '{}')", clientId, status);
-
-		} else {
-			logger.warn("Client #{} : non trovato tra i client attivi.", clientId);
-		}
+	public void registerLoggedUser(String nickname, int clientId) {
+		authenticatedUsers.put(nickname, clientId);
 	}
 
 	/*
 	 * Getter & Setter
 	 */
-	public static synchronized Server getServer() {
-		if (server == null) {
-			server = new Server();
-		}
-		return server;
+	public MongoDBManager getMongoDBManager() {
+		return mongoDBManager;
+	}
+
+	public ConcurrentMap<String, Integer> getAuthenticatedUsers() {
+		return authenticatedUsers;
 	}
 }

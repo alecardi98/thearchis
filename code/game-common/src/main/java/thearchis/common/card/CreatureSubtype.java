@@ -1,9 +1,9 @@
 package thearchis.common.card;
 
 public enum CreatureSubtype {
-	Bestia,
-	Umano,
-	Demone,
-	Divino,
-	Nessuno;
+	BEAST,
+	HUMAN,
+	DEMON,
+	GOD,
+	NONE;
 }

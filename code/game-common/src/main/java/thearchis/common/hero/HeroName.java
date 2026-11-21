@@ -1,9 +1,9 @@
 package thearchis.common.hero;
 
 public enum HeroName {
-	Brakkar, // la bestia
-	Malakor, // il demone
-	Aethelgard, // la divinità
-	Lyra, // l'umana
-	Generico; // classe generica
+	BRAKKAR, // la bestia
+	MALAKOR, // il demone
+	AETHELGARD, // la divinità
+	LYRA, // l'umana
+	NONE; // classe generica
 }

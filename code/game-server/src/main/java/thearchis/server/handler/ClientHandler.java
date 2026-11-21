@@ -7,27 +7,33 @@ import java.net.Socket;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import thearchis.common.game.ClientState;
+import thearchis.common.game.Player;
 import thearchis.common.message.Message;
 
 public class ClientHandler implements Runnable {
 
-	private static final Logger logger = LogManager.getLogger(ClientHandler.class);
+	private static final Logger logger = LogManager.getLogger("[ClientHandler]");
 
 	private final Socket socket;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 
 	private final int clientId;
-	private String nickname;
+	private ClientState clientState;
+	private Player player;
 
 	public ClientHandler(Socket socket, int clientId) {
+		if (socket == null) {
+			throw new IllegalArgumentException("ClientHandler : socket non può essere null.");
+		}
 		this.socket = socket;
+
 		this.clientId = clientId;
+		clientState = ClientState.NOT_AUTHENTICATED;
 	}
 
-	/*
-	 * Creazione flusso in e out
-	 */
 	public void init() throws IOException {
 		out = new ObjectOutputStream(socket.getOutputStream());
 		out.flush();
@@ -38,18 +44,15 @@ public class ClientHandler implements Runnable {
 	public void run() {
 		try {
 			Object obj;
-			// gestione dei pacchetti in entrata delegata al server
 			while ((obj = in.readObject()) != null) {
-				Message msg = (Message) obj;
-
-				switch (msg.getType()) {
-				case REGISTER_REQUEST -> Server.getServer().handleRegister(clientId, msg);
-				case LOGIN_REQUEST -> Server.getServer().handleLogin(clientId, msg);
-				default -> logger.error("Tipo di messaggio sconosciuto: {}", msg.getType());
+				if (obj instanceof Message msg) {
+					MessageDispatcher.getInstance().dispatch(this, msg);
+				} else {
+					logger.warn("Client #{} : run : Oggetto non riconosciuto ricevuto dal socket.", clientId);
 				}
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			logger.info("Client #{} : connessione interrotta con il client.", clientId);
+			logger.info("Client #{} : run : Connessione interrotta con il client.", clientId);
 		} finally {
 			cleanUp();
 		}
@@ -64,15 +67,20 @@ public class ClientHandler implements Runnable {
 			if (socket != null && !socket.isClosed())
 				socket.close();
 		} catch (IOException e) {
-			logger.debug("Client #{} : socket del client già chiuso o non raggiungibile.", clientId);
+			logger.debug("Client #{} : cleanUp : Socket del client già chiuso o non raggiungibile.", clientId);
 		} finally {
-			Server.getServer().removeClient(clientId);
+			Server.getInstance().removeClient(clientId);
 		}
 	}
 
 	public synchronized void sendMessage(Object msg) {
+		if (msg == null) {
+			logger.error("Client #{} : sendMessage : Il messaggio da inviare al client è null.", clientId);
+			return;
+		}
 		if (out == null) {
-			logger.error("Client #{} : impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
+			logger.error(
+					"Client #{} : sendMessage : Impossibile inviare messaggio al client (ObjectOutputStream non inizializzato).",
 					clientId);
 			return;
 		}
@@ -80,21 +88,41 @@ public class ClientHandler implements Runnable {
 			out.writeObject(msg);
 			out.flush();
 		} catch (IOException e) {
-			logger.error("Client #{} : errore I/O durante l'invio del pacchetto '{}' al client.",
-					msg != null ? msg.getClass().getSimpleName() : "null", clientId, e.getMessage());
+			logger.error("Client #{} : sendMessage : Errore I/O durante l'invio del pacchetto al client ({}).",
+					clientId, e.getMessage());
 		}
 	}
 
 	/*
 	 * Getter & Setter
 	 */
-
-	public void setNickname(String nickname) {
-		this.nickname = nickname;
+	public int getClientId() {
+		return clientId;
 	}
 
-	public String getNickname() {
-		return nickname;
+	public Player getPlayer() {
+		return player;
 	}
 
+	public void setPlayer(Player player) {
+		if (player == null) {
+			logger.error("Client #{} : setPlayer : Non può settare player null.", clientId);
+			return;
+		} else {
+			this.player = player;
+		}
+	}
+
+	public ClientState getClientState() {
+		return clientState;
+	}
+
+	public void setClientState(ClientState clientState) {
+		if (clientState == null) {
+			logger.error("Client #{} : setClientState : Non può settare clientState null.", clientId);
+			return;
+		} else {
+			this.clientState = clientState;
+		}
+	}
 }
