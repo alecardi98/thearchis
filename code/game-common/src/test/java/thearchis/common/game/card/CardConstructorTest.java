@@ -1,4 +1,4 @@
-package thearchis.common.card;
+package thearchis.common.game.card;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

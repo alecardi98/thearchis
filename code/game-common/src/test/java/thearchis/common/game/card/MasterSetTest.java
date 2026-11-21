@@ -1,13 +1,8 @@
-package thearchis.common.card;
+package thearchis.common.game.card;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import thearchis.common.game.card.Card;
-import thearchis.common.game.card.Creature;
-import thearchis.common.game.card.MasterSet;
-import thearchis.common.game.card.Spell;
 
 import java.util.Map;
 
@@ -23,7 +18,17 @@ class MasterSetTest {
 	}
 
 	@Test
-	@DisplayName("Il MasterSet deve caricare correttamente il catalogo dal file JSON")
+	@DisplayName("Tutti i file JSON dei CardSet devono esistere nel classpath")
+	void testAllCardSetFilesExist() {
+		for (CardSet set : CardSet.values()) {
+			String filePath = "/" + set.name() + ".json";
+			assertNotNull(MasterSet.class.getResourceAsStream(filePath),
+					"Il file JSON per il set " + set + " (" + filePath + ") deve esistere nel classpath");
+		}
+	}
+
+	@Test
+	@DisplayName("Il MasterSet deve caricare correttamente il catalogo da tutti i CardSet")
 	void testMasterSetLoading() {
 		assertNotNull(masterSet, "L'istanza del MasterSet non deve essere null");
 		Map<Integer, Card> cards = masterSet.getAllCards();
@@ -34,7 +39,7 @@ class MasterSetTest {
 	@DisplayName("Recupero carta esistente tramite ID")
 	void testGetCardByIdSuccess() {
 		Card card = masterSet.getCardById(2);
-		assertNotNull(card, "La carta con ID 2 deve esistere nel file cards.json");
+		assertNotNull(card, "La carta con ID 2 deve esistere nei set caricati");
 		assertEquals(2, card.getId());
 	}
 

@@ -1,4 +1,4 @@
-package thearchis.common.game;
+package thearchis.common.game.state;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

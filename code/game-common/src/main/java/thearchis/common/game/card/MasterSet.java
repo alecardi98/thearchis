@@ -21,13 +21,11 @@ import java.util.Map;
 public class MasterSet {
 
 	private static final Logger logger = LogManager.getLogger("[MasterSet]");
-	private static final String CARDS_BASE_SET_FILE_PATH = "/" + CardSet.BASE_SET + ".json";
-	private static final String CARDS_CLASSIC_SET_FILE_PATH = "/" + CardSet.CLASSIC_SET + ".json";
 	private static MasterSet instance;
 	private final Map<Integer, Card> cardsMap = new HashMap<>();
 
 	private MasterSet() {
-		loadCardsFromJson();
+		loadAllSetsFromJson();
 	}
 
 	public static synchronized MasterSet getInstance() {
@@ -37,15 +35,25 @@ public class MasterSet {
 		return instance;
 	}
 
-	private void loadCardsFromJson() {
-		try (InputStream inputStream = getClass().getResourceAsStream(CARDS_FILE_PATH)) {
+	private void loadAllSetsFromJson() {
+		for (CardSet set : CardSet.values()) {
+			String filePath = "/" + set.name() + ".json";
+			loadCardsFromFile(set, filePath);
+		}
+		logger.info("loadAllSetsFromJson : MasterSet caricato con successo ({} carte totali da {} set).",
+				cardsMap.size(), CardSet.values().length);
+	}
+
+	private void loadCardsFromFile(CardSet set, String filePath) {
+		try (InputStream inputStream = getClass().getResourceAsStream(filePath)) {
 			if (inputStream == null) {
-				logger.fatal("loadCardsFromJson : Impossibile trovare il file delle carte {}.", CARDS_FILE_PATH);
-				throw new RuntimeException("File " + CARDS_FILE_PATH + " non trovato nel classpath.");
+				logger.fatal("loadCardsFromFile : Impossibile trovare il file delle carte {}.", filePath);
+				throw new RuntimeException("File " + filePath + " non trovato nel classpath.");
 			}
 
 			try (Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
 				JsonArray jsonArray = JsonParser.parseReader(reader).getAsJsonArray();
+				int countBefore = cardsMap.size();
 
 				for (JsonElement element : jsonArray) {
 					JsonObject obj = element.getAsJsonObject();
@@ -109,16 +117,18 @@ public class MasterSet {
 						cardsMap.put(card.getId(), card);
 
 					} catch (Exception e) {
-						throw new IllegalArgumentException(
-								"Errore nel parsing della carta con id " + id + ": " + e.getMessage(), e);
+						throw new IllegalArgumentException("Errore nel parsing della carta con id " + id + " nel file "
+								+ filePath + ": " + e.getMessage(), e);
 					}
 				}
-				logger.info("loadCardsFromJson : MasterSet caricato con successo ({} carte).", cardsMap.size());
+				logger.info("loadCardsFromFile : Set {} caricato con successo ({} carte).", set,
+						cardsMap.size() - countBefore);
 			}
 		} catch (Exception e) {
-			logger.fatal("loadCardsFromJson : Errore critico durante la lettura del file JSON delle carte ({}).",
+			logger.fatal("loadCardsFromFile : Errore critico durante la lettura del file {} ({}).", filePath,
 					e.getMessage(), e);
-			throw new RuntimeException("Impossibile caricare il catalogo carte da JSON (" + e.getMessage() + ").", e);
+			throw new RuntimeException(
+					"Impossibile caricare il catalogo carte da " + filePath + " (" + e.getMessage() + ").", e);
 		}
 	}
 
