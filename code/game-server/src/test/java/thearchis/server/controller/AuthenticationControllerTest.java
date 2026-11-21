@@ -19,7 +19,7 @@ import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
-import thearchis.server.db.DBManager;
+import thearchis.server.db.AuthenticationRepository;
 import thearchis.server.handler.ClientHandler;
 import thearchis.server.handler.Server;
 
@@ -38,7 +38,7 @@ class AuthenticationControllerTest {
 	@Mock
 	private Server mockServer;
 	@Mock
-	private DBManager mockDbManager;
+	private AuthenticationRepository mockAuthenticationRepository;
 	@InjectMocks
 	private AuthenticationController authenticationController;
 
@@ -124,27 +124,23 @@ class AuthenticationControllerTest {
 	@Test
 	@DisplayName("Registrazione eseguita con successo.")
 	void testHandleRegisterSuccess() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
-			when(mockDbManager.registerUser("NewUser", "Pass123"))
-					.thenReturn(new OperationResult<>(OperationStatus.REGISTER_OK, null));
+		when(mockAuthenticationRepository.registerUser("NewUser", "Pass123"))
+				.thenReturn(new OperationResult<>(OperationStatus.REGISTER_OK, null));
 
-			AuthenticationData credentials = new AuthenticationData("NewUser", "Pass123");
-			Message message = new Message(MessageType.REGISTER_REQUEST, credentials);
+		AuthenticationData credentials = new AuthenticationData("NewUser", "Pass123");
+		Message message = new Message(MessageType.REGISTER_REQUEST, credentials);
 
-			authenticationController.handleRegister(clientHandler, message);
+		authenticationController.handleRegister(clientHandler, message);
 
-			ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-			verify(clientHandler).sendMessage(captor.capture());
+		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+		verify(clientHandler).sendMessage(captor.capture());
 
-			Message response = captor.getValue();
-			assertEquals(MessageType.REGISTER_RESPONSE, response.getType());
+		Message response = captor.getValue();
+		assertEquals(MessageType.REGISTER_RESPONSE, response.getType());
 
-			OperationResult<?> result = (OperationResult<?>) response.getData();
-			assertEquals(OperationStatus.REGISTER_OK, result.getStatus());
-			assertNull(result.getData(), "Il payload di esito della registrazione deve essere null");
-		}
+		OperationResult<?> result = (OperationResult<?>) response.getData();
+		assertEquals(OperationStatus.REGISTER_OK, result.getStatus());
+		assertNull(result.getData(), "Il payload di esito della registrazione deve essere null");
 	}
 
 	@Test
@@ -253,8 +249,7 @@ class AuthenticationControllerTest {
 
 			Map<Integer, Integer> cards = new HashMap<>();
 			Player fakePlayer = new Player("ValidUser", 100, new Collection(cards, 50), new ArrayList<>(), 0, 0);
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
-			when(mockDbManager.loginUser("ValidUser", "Pass123"))
+			when(mockAuthenticationRepository.loginUser("ValidUser", "Pass123"))
 					.thenReturn(new OperationResult<>(OperationStatus.LOGIN_OK, fakePlayer));
 
 			AuthenticationData credentials = new AuthenticationData("ValidUser", "Pass123");
@@ -264,6 +259,7 @@ class AuthenticationControllerTest {
 
 			verify(clientHandler).setPlayer(fakePlayer);
 			verify(clientHandler).setClientState(ClientState.MAIN_MENU);
+			verify(mockServer).registerLoggedUser("ValidUser", 1);
 
 			ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
 			verify(clientHandler).sendMessage(captor.capture());

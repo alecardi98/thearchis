@@ -12,6 +12,7 @@ import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
+import thearchis.server.db.CollectionRepository;
 import thearchis.server.handler.ClientHandler;
 import thearchis.server.handler.Server;
 
@@ -19,7 +20,10 @@ public class CollectionController {
 
 	private static final Logger logger = LogManager.getLogger("[CollectionController]");
 
-	public CollectionController() {
+	private CollectionRepository collectionRepository;
+
+	public CollectionController(CollectionRepository collectionRepository) {
+		this.collectionRepository = collectionRepository;
 	}
 
 	public void handleCollectionRequest(ClientHandler clientHandler, Message msg) {
@@ -66,7 +70,7 @@ public class CollectionController {
 			return;
 		}
 
-		OperationResult<Collection> result = server.getDBManager().getUserCollection(nickname);
+		OperationResult<Collection> result = collectionRepository.getUserCollection(nickname);
 		OperationStatus status = result.getStatus();
 
 		if (status == OperationStatus.COLLECTION_OK && result.getData() != null) {
@@ -131,7 +135,7 @@ public class CollectionController {
 
 		int craftCost = card.getCraftCost();
 
-		OperationResult<Collection> result = server.getDBManager().craftCard(nickname, cardId, craftCost);
+		OperationResult<Collection> result = collectionRepository.craftCard(nickname, cardId, craftCost);
 		if (result.getStatus() == OperationStatus.CRAFT_OK && result.getData() != null) {
 			clientHandler.getPlayer().setCollection(result.getData());
 		}
@@ -199,7 +203,7 @@ public class CollectionController {
 
 		int disenchantValue = card.getDisenchantValue();
 
-		OperationResult<Collection> result = server.getDBManager().disenchantCard(nickname, cardId, disenchantValue);
+		OperationResult<Collection> result = collectionRepository.disenchantCard(nickname, cardId, disenchantValue);
 		if (result.getStatus() == OperationStatus.DISENCHANT_OK && result.getData() != null) {
 			clientHandler.getPlayer().setCollection(result.getData());
 		}

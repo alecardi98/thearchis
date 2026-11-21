@@ -1,24 +1,17 @@
 package thearchis.server.handler;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import thearchis.common.card.Card;
-import thearchis.common.card.CardRarity;
-import thearchis.common.card.CardType;
-import thearchis.common.card.MasterSet;
-import thearchis.common.card.Spell;
 import thearchis.common.game.ClientState;
-import thearchis.common.game.Collection;
-import thearchis.common.game.Deck;
-import thearchis.common.game.Player;
-import thearchis.common.hero.HeroName;
 import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.BackNavigationData;
 import thearchis.common.message.CollectionData;
@@ -26,28 +19,69 @@ import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
-import thearchis.server.db.DBManager;
+import thearchis.server.controller.AuthenticationController;
+import thearchis.server.controller.BackNavigationController;
+import thearchis.server.controller.CollectionController;
+import thearchis.server.controller.DeckBuilderController;
+import thearchis.server.controller.GameController;
+import thearchis.server.controller.ShopController;
+import thearchis.server.db.MongoDBManager;
+
+import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 class MessageDispatcherTest {
 
 	@Mock
 	private ClientHandler mockClientHandler;
+	@Mock
+	private Server mockServer;
+	@Mock
+	private MongoDBManager mockDbManager;
+
+	private MockedStatic<Server> mockedServer;
+	private MockedConstruction<AuthenticationController> mockedAuthController;
+	private MockedConstruction<CollectionController> mockedCollectionController;
+	private MockedConstruction<BackNavigationController> mockedBackController;
+	private MockedConstruction<DeckBuilderController> mockedDeckController;
+	private MockedConstruction<ShopController> mockedShopController;
+	private MockedConstruction<GameController> mockedGameController;
 
 	private MessageDispatcher messageDispatcher;
 
 	@BeforeEach
-	void setUp() {
+	void setUp() throws Exception {
+		Field instanceField = MessageDispatcher.class.getDeclaredField("instance");
+		instanceField.setAccessible(true);
+		instanceField.set(null, null);
+
+		mockedServer = mockStatic(Server.class);
+		mockedServer.when(Server::getInstance).thenReturn(mockServer);
+		lenient().when(mockServer.getMongoDBManager()).thenReturn(mockDbManager);
+
+		mockedAuthController = mockConstruction(AuthenticationController.class);
+		mockedCollectionController = mockConstruction(CollectionController.class);
+		mockedBackController = mockConstruction(BackNavigationController.class);
+		mockedDeckController = mockConstruction(DeckBuilderController.class);
+		mockedShopController = mockConstruction(ShopController.class);
+		mockedGameController = mockConstruction(GameController.class);
+
 		messageDispatcher = MessageDispatcher.getInstance();
 		lenient().when(mockClientHandler.getClientId()).thenReturn(1);
+	}
+
+	@AfterEach
+	void tearDown() {
+		mockedServer.close();
+		mockedAuthController.close();
+		mockedCollectionController.close();
+		mockedBackController.close();
+		mockedDeckController.close();
+		mockedShopController.close();
+		mockedGameController.close();
 	}
 
 	@Test
@@ -162,8 +196,8 @@ class MessageDispatcherTest {
 	void testDispatchInvalidBackNavigationRequest() {
 		when(mockClientHandler.getClientState()).thenReturn(ClientState.NOT_AUTHENTICATED);
 
-		Message disenchantMsg = new Message(MessageType.BACKNAVIGATION_REQUEST, new CollectionData(2));
-		messageDispatcher.dispatch(mockClientHandler, disenchantMsg);
+		Message backMsg = new Message(MessageType.BACKNAVIGATION_REQUEST, new CollectionData(2));
+		messageDispatcher.dispatch(mockClientHandler, backMsg);
 
 		ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
 		verify(mockClientHandler, times(1)).sendMessage(messageCaptor.capture());
@@ -178,184 +212,82 @@ class MessageDispatcherTest {
 	@Test
 	@DisplayName("Inoltra REGISTER_REQUEST ad AuthenticationController")
 	void testDispatchValidRegisterRequest() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
-			Server mockServer = mock(Server.class);
-			DBManager mockDbManager = mock(DBManager.class);
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
+		when(mockClientHandler.getClientState()).thenReturn(ClientState.NOT_AUTHENTICATED);
 
-			when(mockDbManager.registerUser("NewUser", "Pass123"))
-					.thenReturn(new OperationResult<>(OperationStatus.REGISTER_OK, null));
+		AuthenticationData data = new AuthenticationData("NewUser", "Pass123");
+		Message validRegisterMsg = new Message(MessageType.REGISTER_REQUEST, data);
 
-			when(mockClientHandler.getClientState()).thenReturn(ClientState.NOT_AUTHENTICATED);
+		messageDispatcher.dispatch(mockClientHandler, validRegisterMsg);
 
-			AuthenticationData data = new AuthenticationData("NewUser", "Pass123");
-			Message validRegisterMsg = new Message(MessageType.REGISTER_REQUEST, data);
-
-			messageDispatcher.dispatch(mockClientHandler, validRegisterMsg);
-
-			verify(mockDbManager).registerUser("NewUser", "Pass123");
-		}
+		AuthenticationController authController = mockedAuthController.constructed().get(0);
+		verify(authController).handleRegister(mockClientHandler, validRegisterMsg);
 	}
 
 	@Test
 	@DisplayName("Inoltra LOGIN_REQUEST ad AuthenticationController")
 	void testDispatchValidLoginRequest() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
-			Server mockServer = mock(Server.class);
-			DBManager mockDbManager = mock(DBManager.class);
-			Map<Integer, Integer> cards = new HashMap<>();
-			Player fakePlayer = new Player("ValidUser", 100, new Collection(cards, 50), new ArrayList<>(), 0, 0);
+		when(mockClientHandler.getClientState()).thenReturn(ClientState.NOT_AUTHENTICATED);
 
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
-			when(mockServer.isUserAuthenticated("ValidUser")).thenReturn(false);
-			when(mockDbManager.loginUser("ValidUser", "Pass123"))
-					.thenReturn(new OperationResult<>(OperationStatus.LOGIN_OK, fakePlayer));
+		AuthenticationData data = new AuthenticationData("ValidUser", "Pass123");
+		Message validLoginMsg = new Message(MessageType.LOGIN_REQUEST, data);
 
-			when(mockClientHandler.getClientState()).thenReturn(ClientState.NOT_AUTHENTICATED);
+		messageDispatcher.dispatch(mockClientHandler, validLoginMsg);
 
-			AuthenticationData data = new AuthenticationData("ValidUser", "Pass123");
-			Message validLoginMsg = new Message(MessageType.LOGIN_REQUEST, data);
-
-			messageDispatcher.dispatch(mockClientHandler, validLoginMsg);
-
-			verify(mockClientHandler).setPlayer(fakePlayer);
-			verify(mockClientHandler).setClientState(ClientState.MAIN_MENU);
-		}
+		AuthenticationController authController = mockedAuthController.constructed().get(0);
+		verify(authController).handleLogin(mockClientHandler, validLoginMsg);
 	}
 
 	@Test
 	@DisplayName("Inoltra COLLECTION_REQUEST a CollectionController")
 	void testDispatchValidCollectionRequest() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
-			Server mockServer = mock(Server.class);
-			DBManager mockDbManager = mock(DBManager.class);
-			Player mockPlayer = mock(Player.class);
+		when(mockClientHandler.getClientState()).thenReturn(ClientState.MAIN_MENU);
 
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
-			when(mockClientHandler.getPlayer()).thenReturn(mockPlayer);
-			when(mockPlayer.getNickname()).thenReturn("AuthUser");
-			when(mockServer.isUserAuthenticated("AuthUser")).thenReturn(true);
+		Message validCollectionMsg = new Message(MessageType.COLLECTION_REQUEST, new CollectionData());
 
-			Map<Integer, Integer> cards = new HashMap<>();
-			Collection fakeCollection = new Collection(cards, 50);
-			when(mockDbManager.getUserCollection("AuthUser"))
-					.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, fakeCollection));
+		messageDispatcher.dispatch(mockClientHandler, validCollectionMsg);
 
-			when(mockClientHandler.getClientState()).thenReturn(ClientState.MAIN_MENU);
-
-			Message validCollectionMsg = new Message(MessageType.COLLECTION_REQUEST, new CollectionData());
-
-			messageDispatcher.dispatch(mockClientHandler, validCollectionMsg);
-
-			verify(mockDbManager).getUserCollection("AuthUser");
-			verify(mockPlayer).setCollection(fakeCollection);
-			verify(mockClientHandler).setClientState(ClientState.IN_COLLECTION);
-		}
+		CollectionController collectionController = mockedCollectionController.constructed().get(0);
+		verify(collectionController).handleCollectionRequest(mockClientHandler, validCollectionMsg);
 	}
 
 	@Test
 	@DisplayName("Inoltra CRAFT_REQUEST a CollectionController")
 	void testDispatchValidCraftRequest() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class);
-				MockedStatic<MasterSet> mockedMasterSet = mockStatic(MasterSet.class)) {
+		when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
 
-			Server mockServer = mock(Server.class);
-			DBManager mockDbManager = mock(DBManager.class);
-			MasterSet mockMasterSet = mock(MasterSet.class);
-			Player mockPlayer = mock(Player.class);
+		Message validCraftMsg = new Message(MessageType.CRAFT_REQUEST, new CollectionData(101));
 
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			mockedMasterSet.when(MasterSet::getInstance).thenReturn(mockMasterSet);
+		messageDispatcher.dispatch(mockClientHandler, validCraftMsg);
 
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
-			when(mockClientHandler.getPlayer()).thenReturn(mockPlayer);
-			when(mockPlayer.getNickname()).thenReturn("AuthUser");
-			when(mockServer.isUserAuthenticated("AuthUser")).thenReturn(true);
-
-			Card validCard = new Spell(101, "Fireball", 3, CardType.SPELL, CardRarity.RARE, HeroName.AETHELGARD,
-					"Deal damage", false);
-			when(mockMasterSet.getCardById(101)).thenReturn(validCard);
-
-			Map<Integer, Integer> cards = new HashMap<>();
-			Collection updatedCollection = new Collection(cards, 200);
-			updatedCollection.addCard(101);
-			when(mockDbManager.craftCard("AuthUser", 101, validCard.getCraftCost()))
-					.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedCollection));
-
-			when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
-
-			Message validCraftMsg = new Message(MessageType.CRAFT_REQUEST, new CollectionData(101));
-
-			messageDispatcher.dispatch(mockClientHandler, validCraftMsg);
-
-			verify(mockDbManager).craftCard("AuthUser", 101, validCard.getCraftCost());
-			verify(mockPlayer).setCollection(updatedCollection);
-		}
+		CollectionController collectionController = mockedCollectionController.constructed().get(0);
+		verify(collectionController).handleCraftRequest(mockClientHandler, validCraftMsg);
 	}
 
 	@Test
 	@DisplayName("Inoltra DISENCHANT_REQUEST a CollectionController")
 	void testDispatchValidDisenchantRequest() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class);
-				MockedStatic<MasterSet> mockedMasterSet = mockStatic(MasterSet.class)) {
+		when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
 
-			Server mockServer = mock(Server.class);
-			DBManager mockDbManager = mock(DBManager.class);
-			MasterSet mockMasterSet = mock(MasterSet.class);
-			Player mockPlayer = mock(Player.class);
+		Message validDisenchantMsg = new Message(MessageType.DISENCHANT_REQUEST, new CollectionData(101));
 
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			mockedMasterSet.when(MasterSet::getInstance).thenReturn(mockMasterSet);
+		messageDispatcher.dispatch(mockClientHandler, validDisenchantMsg);
 
-			when(mockServer.getDBManager()).thenReturn(mockDbManager);
-			when(mockClientHandler.getPlayer()).thenReturn(mockPlayer);
-			when(mockPlayer.getNickname()).thenReturn("AuthUser");
-			when(mockServer.isUserAuthenticated("AuthUser")).thenReturn(true);
-
-			Card validCard = new Spell(101, "Fireball", 3, CardType.SPELL, CardRarity.RARE, HeroName.AETHELGARD,
-					"Deal damage", false);
-			when(mockMasterSet.getCardById(101)).thenReturn(validCard);
-
-			Map<Integer, Integer> cards = new HashMap<>();
-			Collection updatedCollection = new Collection(cards, 300);
-			when(mockDbManager.disenchantCard("AuthUser", 101, validCard.getDisenchantValue()))
-					.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection));
-
-			when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
-
-			Message validDisenchantMsg = new Message(MessageType.DISENCHANT_REQUEST, new CollectionData(101));
-
-			messageDispatcher.dispatch(mockClientHandler, validDisenchantMsg);
-
-			verify(mockDbManager).disenchantCard("AuthUser", 101, validCard.getDisenchantValue());
-			verify(mockPlayer).setCollection(updatedCollection);
-		}
+		CollectionController collectionController = mockedCollectionController.constructed().get(0);
+		verify(collectionController).handleDisenchantRequest(mockClientHandler, validDisenchantMsg);
 	}
 
 	@Test
 	@DisplayName("Inoltra BACKNAVIGATION_REQUEST a BackNavigationController")
 	void testDispatchValidBackNavigationRequest() {
-		try (MockedStatic<Server> mockedServer = mockStatic(Server.class)) {
-			Server mockServer = mock(Server.class);
-			Player mockPlayer = mock(Player.class);
+		when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
 
-			mockedServer.when(Server::getInstance).thenReturn(mockServer);
-			when(mockClientHandler.getPlayer()).thenReturn(mockPlayer);
-			when(mockPlayer.getNickname()).thenReturn("AuthUser");
-			when(mockServer.isUserAuthenticated("AuthUser")).thenReturn(true);
+		Message validBackMsg = new Message(MessageType.BACKNAVIGATION_REQUEST,
+				new BackNavigationData(ClientState.MAIN_MENU));
 
-			when(mockClientHandler.getClientState()).thenReturn(ClientState.IN_COLLECTION);
+		messageDispatcher.dispatch(mockClientHandler, validBackMsg);
 
-			Message validBackMsg = new Message(MessageType.BACKNAVIGATION_REQUEST,
-					new BackNavigationData(ClientState.MAIN_MENU));
-
-			messageDispatcher.dispatch(mockClientHandler, validBackMsg);
-
-			verify(mockClientHandler).setClientState(ClientState.MAIN_MENU);
-		}
+		BackNavigationController backController = mockedBackController.constructed().get(0);
+		verify(backController).handleBackNavigationRequest(mockClientHandler, validBackMsg);
 	}
 
 }

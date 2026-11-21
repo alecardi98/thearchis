@@ -8,7 +8,7 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import thearchis.common.game.Player;
-import thearchis.server.db.DBManager;
+import thearchis.server.db.MongoDBManager;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 class ServerTest {
 
 	@Mock
-	private DBManager mockDbManager;
+	private MongoDBManager mockDbManager;
 	@Mock
 	private ServerSocket mockServerSocket;
 	@Mock
@@ -92,7 +92,7 @@ class ServerTest {
 		});
 		when(mockServerSocket.isClosed()).thenReturn(true);
 
-		try (MockedConstruction<DBManager> dbConstruction = mockConstruction(DBManager.class);
+		try (MockedConstruction<MongoDBManager> dbConstruction = mockConstruction(MongoDBManager.class);
 				MockedConstruction<ServerSocket> socketConstruction = mockConstruction(ServerSocket.class,
 						(mock, context) -> {
 							when(mock.accept()).thenAnswer(inv -> mockServerSocket.accept());
@@ -102,7 +102,7 @@ class ServerTest {
 			server.run();
 
 			assertEquals(1, dbConstruction.constructed().size());
-			DBManager constructedDb = dbConstruction.constructed().get(0);
+			MongoDBManager constructedDb = dbConstruction.constructed().get(0);
 			verify(constructedDb).dbConnect();
 			verify(constructedDb).dbClose();
 
@@ -181,7 +181,7 @@ class ServerTest {
 	@Test
 	@DisplayName("stopServer: pulisce client attivi, chiude ServerSocket, arresta thread pool e chiude DB")
 	void testStopServer() throws Exception {
-		setField(server, "dbManager", mockDbManager);
+		setField(server, "mongoDBManager", mockDbManager);
 		setField(server, "serverSocket", mockServerSocket);
 		setField(server, "clientThreadPool", mockThreadPool);
 
@@ -210,7 +210,7 @@ class ServerTest {
 	@DisplayName("stopServer: è idempotente se chiamato quando running è già false")
 	void testStopServerManyCalls() throws Exception {
 		setField(server, "running", false);
-		setField(server, "dbManager", mockDbManager);
+		setField(server, "mongoDBManager", mockDbManager);
 		setField(server, "clientThreadPool", mockThreadPool);
 
 		invokePrivateMethod(server, "stopServer", new Class<?>[] {});

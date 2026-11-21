@@ -3,7 +3,8 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.server.db.DBManager;
+import thearchis.server.db.MongoDBManager;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -22,7 +23,7 @@ public class Server implements Runnable {
 	private ServerSocket serverSocket;
 	private volatile boolean running = true;
 
-	private DBManager dbManager;
+	private MongoDBManager mongoDBManager;
 	private final ConcurrentMap<Integer, ClientHandler> activeClients = new ConcurrentHashMap<>(); // idclient,clienthandler
 	private final AtomicInteger idGenerator = new AtomicInteger(1);
 	private final ExecutorService clientThreadPool = Executors.newCachedThreadPool();
@@ -70,8 +71,8 @@ public class Server implements Runnable {
 	}
 
 	private void dbConnection() {
-		dbManager = new DBManager();
-		dbManager.dbConnect();
+		mongoDBManager = new MongoDBManager();
+		mongoDBManager.dbConnect();
 	}
 
 	private void initializeClient(Socket socket) {
@@ -129,7 +130,7 @@ public class Server implements Runnable {
 		}
 
 		clientThreadPool.shutdown();
-		dbManager.dbClose();
+		mongoDBManager.dbClose();
 
 		logger.info("stopServer : Server arrestato con successo.");
 	}
@@ -145,8 +146,8 @@ public class Server implements Runnable {
 	/*
 	 * Getter & Setter
 	 */
-	public DBManager getDBManager() {
-		return dbManager;
+	public MongoDBManager getMongoDBManager() {
+		return mongoDBManager;
 	}
 
 	public ConcurrentMap<String, Integer> getAuthenticatedUsers() {

@@ -14,6 +14,12 @@ import thearchis.server.controller.DeckBuilderController;
 import thearchis.server.controller.GameController;
 import thearchis.server.controller.BackNavigationController;
 import thearchis.server.controller.ShopController;
+import thearchis.server.db.AuthenticationRepository;
+import thearchis.server.db.CollectionRepository;
+import thearchis.server.db.DeckBuilderRepository;
+import thearchis.server.db.DocumentMapper;
+import thearchis.server.db.MongoDBManager;
+import thearchis.server.db.ShopRepository;
 
 public class MessageDispatcher {
 
@@ -29,13 +35,25 @@ public class MessageDispatcher {
 	private final BackNavigationController backNavigationController;
 
 	private MessageDispatcher() {
-		this.authenticationController = new AuthenticationController();
-		this.shopController = new ShopController();
-		this.collectionController = new CollectionController();
+
+		MongoDBManager mongoDBManager = Server.getInstance().getMongoDBManager();
+		DocumentMapper documentMapper = new DocumentMapper();
+
+		AuthenticationRepository authenticationRepository = new AuthenticationRepository(mongoDBManager,
+				documentMapper);
+		this.authenticationController = new AuthenticationController(authenticationRepository);
+
+		CollectionRepository collectionRepository = new CollectionRepository(mongoDBManager, documentMapper);
+		this.collectionController = new CollectionController(collectionRepository);
+
+		ShopRepository shopRepository = new ShopRepository(mongoDBManager, documentMapper);
+		this.shopController = new ShopController(shopRepository);
+
+		DeckBuilderRepository deckBuilderRepository = new DeckBuilderRepository(mongoDBManager, documentMapper);
+		this.deckBuilderController = new DeckBuilderController(deckBuilderRepository);
+
 		this.gameController = new GameController();
 		this.backNavigationController = new BackNavigationController();
-		this.deckBuilderController = new DeckBuilderController();
-
 	}
 
 	public static synchronized MessageDispatcher getInstance() {

@@ -26,7 +26,7 @@ import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
-import thearchis.server.db.DBManager;
+import thearchis.server.db.CollectionRepository;
 import thearchis.server.handler.ClientHandler;
 import thearchis.server.handler.Server;
 
@@ -46,7 +46,7 @@ class CollectionControllerTest {
 	@Mock
 	private Player mockPlayer;
 	@Mock
-	private DBManager mockDbManager;
+	private CollectionRepository mockCollectionRepository;
 	@Mock
 	private MasterSet mockMasterSet;
 	@InjectMocks
@@ -179,8 +179,7 @@ class CollectionControllerTest {
 	@DisplayName("Non aggiorna stato client a IN_COLLECTION se DB restituisce DB_ERROR")
 	void testHandleCollectionRequestDbError() {
 		setupAuthenticatedUser();
-		when(mockServer.getDBManager()).thenReturn(mockDbManager);
-		when(mockDbManager.getUserCollection("AuthenticatedUser"))
+		when(mockCollectionRepository.getUserCollection("AuthenticatedUser"))
 				.thenReturn(new OperationResult<>(OperationStatus.DB_ERROR, null));
 
 		Message message = new Message(MessageType.COLLECTION_REQUEST, new CollectionData());
@@ -195,11 +194,10 @@ class CollectionControllerTest {
 	@DisplayName("Accetta COLLECTION_REQUEST e aggiorna stato client a IN_COLLECTION")
 	void testHandleCollectionRequestSuccess() {
 		setupAuthenticatedUser();
-		when(mockServer.getDBManager()).thenReturn(mockDbManager);
 
 		Map<Integer, Integer> cards = new HashMap<>();
 		Collection fakeCollection = new Collection(cards, 0);
-		when(mockDbManager.getUserCollection("AuthenticatedUser"))
+		when(mockCollectionRepository.getUserCollection("AuthenticatedUser"))
 				.thenReturn(new OperationResult<>(OperationStatus.COLLECTION_OK, fakeCollection));
 
 		Message message = new Message(MessageType.COLLECTION_REQUEST, new CollectionData());
@@ -346,7 +344,6 @@ class CollectionControllerTest {
 	@DisplayName("Accetta CRAFT_REQUEST")
 	void testHandleCraftRequestSuccess() {
 		setupAuthenticatedUser();
-		when(mockServer.getDBManager()).thenReturn(mockDbManager);
 
 		Card validCard = new Spell(101, "Fireball", 3, CardType.SPELL, CardRarity.RARE, HeroName.AETHELGARD,
 				"Deal damage", false);
@@ -355,7 +352,7 @@ class CollectionControllerTest {
 		Map<Integer, Integer> cards = new HashMap<>();
 		Collection updatedCollection = new Collection(cards, 200);
 		updatedCollection.addCard(101);
-		when(mockDbManager.craftCard("AuthenticatedUser", 101, validCard.getCraftCost()))
+		when(mockCollectionRepository.craftCard("AuthenticatedUser", 101, validCard.getCraftCost()))
 				.thenReturn(new OperationResult<>(OperationStatus.CRAFT_OK, updatedCollection));
 
 		Message message = new Message(MessageType.CRAFT_REQUEST, new CollectionData(101));
@@ -501,7 +498,6 @@ class CollectionControllerTest {
 	@DisplayName("Accetta DISENCHANT_REQUEST")
 	void testHandleDisenchantRequestSuccess() {
 		setupAuthenticatedUser();
-		when(mockServer.getDBManager()).thenReturn(mockDbManager);
 
 		Card validCard = new Spell(101, "Fireball", 3, CardType.SPELL, CardRarity.RARE, HeroName.AETHELGARD,
 				"Deal damage", false);
@@ -509,7 +505,7 @@ class CollectionControllerTest {
 
 		Map<Integer, Integer> cards = new HashMap<>();
 		Collection updatedCollection = new Collection(cards, 300);
-		when(mockDbManager.disenchantCard("AuthenticatedUser", 101, validCard.getDisenchantValue()))
+		when(mockCollectionRepository.disenchantCard("AuthenticatedUser", 101, validCard.getDisenchantValue()))
 				.thenReturn(new OperationResult<>(OperationStatus.DISENCHANT_OK, updatedCollection));
 
 		Message message = new Message(MessageType.DISENCHANT_REQUEST, new CollectionData(101));

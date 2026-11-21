@@ -10,6 +10,7 @@ import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 import thearchis.common.message.AuthenticationData;
+import thearchis.server.db.AuthenticationRepository;
 import thearchis.server.handler.ClientHandler;
 import thearchis.server.handler.Server;
 
@@ -17,7 +18,10 @@ public class AuthenticationController {
 
 	private static final Logger logger = LogManager.getLogger("[AuthenticationController]");
 
-	public AuthenticationController() {
+	private AuthenticationRepository authenticationRepository;
+
+	public AuthenticationController(AuthenticationRepository authenticationRepository) {
+		this.authenticationRepository = authenticationRepository;
 	}
 
 	public void handleRegister(ClientHandler clientHandler, Message msg) {
@@ -45,7 +49,7 @@ public class AuthenticationController {
 			return;
 		}
 
-		OperationResult<Void> result = Server.getInstance().getDBManager().registerUser(nickname, password);
+		OperationResult<Void> result = authenticationRepository.registerUser(nickname, password);
 		clientHandler.sendMessage(new Message(MessageType.REGISTER_RESPONSE, result));
 
 		OperationStatus status = result.getStatus();
@@ -84,7 +88,7 @@ public class AuthenticationController {
 			return;
 		}
 
-		OperationResult<Player> result = server.getDBManager().loginUser(nickname, password);
+		OperationResult<Player> result = authenticationRepository.loginUser(nickname, password);
 		OperationStatus status = result.getStatus();
 
 		if (status == OperationStatus.LOGIN_OK) {
