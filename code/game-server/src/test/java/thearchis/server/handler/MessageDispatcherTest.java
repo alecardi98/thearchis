@@ -11,7 +11,7 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import thearchis.common.game.ClientState;
+import thearchis.common.game.state.ClientState;
 import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.BackNavigationData;
 import thearchis.common.message.CollectionData;

@@ -1,4 +1,4 @@
-package thearchis.common.game;
+package thearchis.common.game.state;
 
 import java.io.Serializable;
 import java.util.List;

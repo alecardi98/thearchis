@@ -1,8 +1,8 @@
-package thearchis.common.card;
+package thearchis.common.game.card;
 
 import java.io.Serializable;
 
-import thearchis.common.hero.HeroName;
+import thearchis.common.game.hero.HeroName;
 
 public abstract class Card implements Serializable {
 

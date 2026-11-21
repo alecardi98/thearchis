@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import thearchis.common.game.ClientState;
+import thearchis.common.game.state.ClientState;
 
 class BackNavigationDataTest {
 

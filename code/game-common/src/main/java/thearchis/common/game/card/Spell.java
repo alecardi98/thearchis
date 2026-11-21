@@ -1,6 +1,6 @@
-package thearchis.common.card;
+package thearchis.common.game.card;
 
-import thearchis.common.hero.HeroName;
+import thearchis.common.game.hero.HeroName;
 
 public class Spell extends Card {
 

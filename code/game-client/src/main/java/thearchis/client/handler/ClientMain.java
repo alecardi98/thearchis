@@ -1,7 +1,7 @@
 package thearchis.client.handler;
 
-import thearchis.common.card.MasterSet;
-import thearchis.common.game.ClientState;
+import thearchis.common.game.card.MasterSet;
+import thearchis.common.game.state.ClientState;
 
 public class ClientMain {
 

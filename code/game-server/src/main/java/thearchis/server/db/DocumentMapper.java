@@ -9,10 +9,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bson.Document;
 
-import thearchis.common.game.Collection;
-import thearchis.common.game.Deck;
-import thearchis.common.game.Player;
-import thearchis.common.hero.HeroName;
+import thearchis.common.game.hero.HeroName;
+import thearchis.common.game.state.Collection;
+import thearchis.common.game.state.Deck;
+import thearchis.common.game.state.Player;
 
 public class DocumentMapper {
 

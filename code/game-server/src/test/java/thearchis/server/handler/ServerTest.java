@@ -7,7 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
-import thearchis.common.game.Player;
+
+import thearchis.common.game.state.Player;
 import thearchis.server.db.MongoDBManager;
 
 import java.lang.reflect.Field;

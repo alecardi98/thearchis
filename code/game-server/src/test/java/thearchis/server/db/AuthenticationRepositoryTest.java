@@ -5,6 +5,7 @@ import com.mongodb.MongoWriteException;
 import com.mongodb.WriteError;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
+
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -16,8 +17,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import thearchis.common.game.Player;
-import thearchis.common.hero.HeroName;
+import thearchis.common.game.hero.HeroName;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 

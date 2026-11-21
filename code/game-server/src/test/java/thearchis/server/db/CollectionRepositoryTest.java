@@ -4,6 +4,7 @@ import com.mongodb.MongoException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
+
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,7 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import thearchis.common.game.Collection;
+import thearchis.common.game.state.Collection;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 

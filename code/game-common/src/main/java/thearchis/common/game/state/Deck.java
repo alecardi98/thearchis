@@ -1,8 +1,9 @@
-package thearchis.common.game;
+package thearchis.common.game.state;
 
 import java.io.Serializable;
 import java.util.Map;
-import thearchis.common.hero.HeroName;
+
+import thearchis.common.game.hero.HeroName;
 
 public class Deck implements Serializable {
 

@@ -1,4 +1,4 @@
-package thearchis.common.card;
+package thearchis.common.game.card;
 
 public enum CardRarity {
     COMMON(40, 5),

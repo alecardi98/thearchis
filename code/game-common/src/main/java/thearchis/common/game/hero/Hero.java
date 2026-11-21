@@ -1,4 +1,4 @@
-package thearchis.common.hero;
+package thearchis.common.game.hero;
 
 public class Hero {
 

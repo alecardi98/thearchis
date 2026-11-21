@@ -10,9 +10,9 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Collection;
-import thearchis.common.game.Player;
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Collection;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.CollectionData;
 import thearchis.common.message.Message;

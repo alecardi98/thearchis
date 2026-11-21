@@ -3,6 +3,10 @@ package thearchis.common.game;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import thearchis.common.game.state.Collection;
+import thearchis.common.game.state.Deck;
+import thearchis.common.game.state.Player;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

@@ -8,8 +8,8 @@ import java.net.Socket;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Player;
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.Message;
 
 public class ClientHandler implements Runnable {

@@ -2,7 +2,9 @@ package thearchis.common.game;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import thearchis.common.hero.HeroName;
+
+import thearchis.common.game.hero.HeroName;
+import thearchis.common.game.state.Deck;
 
 import java.util.HashMap;
 import java.util.Map;

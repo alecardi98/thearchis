@@ -2,7 +2,7 @@ package thearchis.common.message;
 
 import java.io.Serializable;
 
-import thearchis.common.game.ClientState;
+import thearchis.common.game.state.ClientState;
 
 public class BackNavigationData implements Serializable {
 

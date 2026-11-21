@@ -3,6 +3,8 @@ package thearchis.common.game;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import thearchis.common.game.state.Collection;
+
 import java.util.HashMap;
 import java.util.Map;
 

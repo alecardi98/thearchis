@@ -5,9 +5,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import thearchis.common.game.Collection;
-import thearchis.common.game.Player;
-import thearchis.common.hero.HeroName;
+import thearchis.common.game.hero.HeroName;
+import thearchis.common.game.state.Collection;
+import thearchis.common.game.state.Player;
 
 import java.util.ArrayList;
 import java.util.List;

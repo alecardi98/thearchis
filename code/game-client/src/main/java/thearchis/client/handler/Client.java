@@ -12,8 +12,8 @@ import org.apache.logging.log4j.Logger;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.BackNavigationData;
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Player;
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.CollectionData;
 

@@ -1,4 +1,4 @@
-package thearchis.common.game;
+package thearchis.common.game.state;
 
 public enum ClientState {
 	NOT_AUTHENTICATED, 

@@ -14,7 +14,7 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.Updates;
 
-import thearchis.common.game.Collection;
+import thearchis.common.game.state.Collection;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 

@@ -3,12 +3,12 @@ package thearchis.server.controller;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Player;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.AuthenticationData;
 import thearchis.server.db.AuthenticationRepository;
 import thearchis.server.handler.ClientHandler;

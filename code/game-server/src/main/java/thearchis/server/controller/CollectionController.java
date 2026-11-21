@@ -3,10 +3,10 @@ package thearchis.server.controller;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.card.Card;
-import thearchis.common.card.MasterSet;
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Collection;
+import thearchis.common.game.card.Card;
+import thearchis.common.game.card.MasterSet;
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Collection;
 import thearchis.common.message.CollectionData;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;

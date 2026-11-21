@@ -3,7 +3,7 @@ package thearchis.server.handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.game.ClientState;
+import thearchis.common.game.state.ClientState;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;

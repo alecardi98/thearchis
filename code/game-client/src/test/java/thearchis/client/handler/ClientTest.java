@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import thearchis.common.game.ClientState;
+import thearchis.common.game.state.ClientState;
 import thearchis.common.message.AuthenticationData;
 import thearchis.common.message.BackNavigationData;
 import thearchis.common.message.CollectionData;

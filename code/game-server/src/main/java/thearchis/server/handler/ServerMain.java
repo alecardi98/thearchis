@@ -1,6 +1,6 @@
 package thearchis.server.handler;
 
-import thearchis.common.card.MasterSet;
+import thearchis.common.game.card.MasterSet;
 
 public class ServerMain {
 

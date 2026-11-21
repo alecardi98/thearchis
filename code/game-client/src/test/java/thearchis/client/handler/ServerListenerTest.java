@@ -6,9 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Collection;
-import thearchis.common.game.Player;
+
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Collection;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.Message;
 import thearchis.common.message.MessageType;
 import thearchis.common.message.OperationResult;

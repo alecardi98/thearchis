@@ -4,6 +4,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import thearchis.common.game.card.Card;
+import thearchis.common.game.card.Creature;
+import thearchis.common.game.card.MasterSet;
+import thearchis.common.game.card.Spell;
+
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;

@@ -2,7 +2,13 @@ package thearchis.common.card;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import thearchis.common.hero.HeroName;
+
+import thearchis.common.game.card.CardRarity;
+import thearchis.common.game.card.CardType;
+import thearchis.common.game.card.Creature;
+import thearchis.common.game.card.CreatureSubtype;
+import thearchis.common.game.card.Spell;
+import thearchis.common.game.hero.HeroName;
 
 import static org.junit.jupiter.api.Assertions.*;
 

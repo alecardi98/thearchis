@@ -11,9 +11,9 @@ import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 
-import thearchis.common.card.Card;
-import thearchis.common.card.MasterSet;
-import thearchis.common.game.Player;
+import thearchis.common.game.card.Card;
+import thearchis.common.game.card.MasterSet;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;
 

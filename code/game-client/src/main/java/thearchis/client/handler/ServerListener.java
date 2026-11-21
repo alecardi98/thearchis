@@ -6,9 +6,9 @@ import java.io.ObjectInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import thearchis.common.game.ClientState;
-import thearchis.common.game.Collection;
-import thearchis.common.game.Player;
+import thearchis.common.game.state.ClientState;
+import thearchis.common.game.state.Collection;
+import thearchis.common.game.state.Player;
 import thearchis.common.message.Message;
 import thearchis.common.message.OperationResult;
 import thearchis.common.message.OperationStatus;

@@ -1,11 +1,11 @@
-package thearchis.common.card;
+package thearchis.common.game.card;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import thearchis.common.hero.HeroName;
+import thearchis.common.game.hero.HeroName;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,8 +21,8 @@ import java.util.Map;
 public class MasterSet {
 
 	private static final Logger logger = LogManager.getLogger("[MasterSet]");
-	private static final String CARDS_FILE_PATH = "/cards.json";
-
+	private static final String CARDS_BASE_SET_FILE_PATH = "/" + CardSet.BASE_SET + ".json";
+	private static final String CARDS_CLASSIC_SET_FILE_PATH = "/" + CardSet.CLASSIC_SET + ".json";
 	private static MasterSet instance;
 	private final Map<Integer, Card> cardsMap = new HashMap<>();
 
